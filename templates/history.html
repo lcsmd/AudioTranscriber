@@ -1,0 +1,167 @@
+{% extends "layout.html" %}
+
+{% block extra_head %}
+<style>
+    .transcription-card {
+        margin-bottom: 20px;
+        transition: transform 0.2s;
+    }
+    
+    .transcription-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .file-info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .file-icon {
+        font-size: 1.5rem;
+        margin-right: 10px;
+        color: var(--primary-color);
+    }
+    
+    .file-details {
+        flex: 1;
+    }
+    
+    .file-name {
+        font-weight: bold;
+        margin-bottom: 0;
+    }
+    
+    .file-meta {
+        font-size: 0.85rem;
+        color: var(--muted-color);
+    }
+    
+    .transcription-content {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .empty-history {
+        text-align: center;
+        padding: 50px 0;
+    }
+    
+    .empty-history i {
+        font-size: 3rem;
+        color: var(--muted-color);
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="card-title">Transcription History</h1>
+                    <a href="/" class="btn btn-primary">
+                        <i class="fas fa-microphone-alt"></i> New Transcription
+                    </a>
+                </div>
+                
+                {% if history %}
+                    <div class="transcription-list">
+                        {% for item in history %}
+                            <div class="transcription-card card">
+                                <div class="card-body">
+                                    <div class="file-info">
+                                        <div class="file-icon">
+                                            <i class="fas fa-file-audio"></i>
+                                        </div>
+                                        <div class="file-details">
+                                            <h5 class="file-name">{{ item.original_filename }}</h5>
+                                            <div class="file-meta">
+                                                <span class="file-type badge bg-secondary">{{ item.file_type }}</span>
+                                                <span class="file-size">{{ (item.file_size / 1024)|round|int }} KB</span>
+                                                <span class="file-date">{{ item.created_at }}</span>
+                                                {% if item.processing_time %}
+                                                    <span class="processing-time">Processed in {{ (item.processing_time / 1000)|round(1) }} seconds</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-sm btn-outline-primary copy-btn" data-transcription="{{ item.id }}">
+                                                <i class="fas fa-copy"></i> Copy
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="transcription-content" id="transcription-{{ item.id }}">
+                                        {{ item.transcription_text }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-history">
+                        <i class="fas fa-history"></i>
+                        <h3>No transcriptions yet</h3>
+                        <p class="text-muted">Your transcription history will appear here once you've processed some audio files.</p>
+                        <a href="/" class="btn btn-primary mt-3">
+                            <i class="fas fa-microphone-alt"></i> Create Your First Transcription
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Copy to clipboard functionality
+        const copyButtons = document.querySelectorAll('.copy-btn');
+        
+        copyButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const transcriptionId = this.getAttribute('data-transcription');
+                const transcriptionText = document.getElementById(`transcription-${transcriptionId}`).textContent.trim();
+                
+                // Create a temporary textarea element to copy the text
+                const textarea = document.createElement('textarea');
+                textarea.value = transcriptionText;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'absolute';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                
+                // Select and copy the text
+                textarea.select();
+                document.execCommand('copy');
+                
+                // Remove the temporary textarea
+                document.body.removeChild(textarea);
+                
+                // Show success message
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('btn-success');
+                
+                // Restore original button after 2 seconds
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.classList.remove('btn-success');
+                    this.classList.add('btn-outline-primary');
+                }, 2000);
+            });
+        });
+    });
+</script>
+{% endblock %}
