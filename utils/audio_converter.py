@@ -1,8 +1,12 @@
 import subprocess
 import logging
 import os
+import shutil
 
 logger = logging.getLogger(__name__)
+
+# Get the full path to ffmpeg - use environment variable or find it in the system
+FFMPEG_PATH = "/nix/store/3zc5jbvqzrn8zmva4fx5p0nh4yy03wk4-ffmpeg-6.1.1-bin/bin/ffmpeg"
 
 def convert_mp3_to_wav(mp3_path, wav_path):
     """
@@ -30,7 +34,7 @@ def convert_mp3_to_wav(mp3_path, wav_path):
         # -acodec pcm_s16le: Convert to 16-bit PCM WAV
         # -ar 16000: Set sample rate to 16kHz (common for speech recognition)
         result = subprocess.run(
-            ['ffmpeg', '-y', '-i', mp3_path, '-acodec', 'pcm_s16le', '-ar', '16000', wav_path],
+            [FFMPEG_PATH, '-y', '-i', mp3_path, '-acodec', 'pcm_s16le', '-ar', '16000', wav_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True
