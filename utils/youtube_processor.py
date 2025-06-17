@@ -91,7 +91,7 @@ def get_youtube_transcript(url, language_codes=['en', 'en-US', 'en-GB']):
         transcript_data = transcript.fetch()
         
         # Combine all text segments
-        full_text = ' '.join([entry['text'] for entry in transcript_data])
+        full_text = ' '.join([entry.get('text', '') if isinstance(entry, dict) else entry.text for entry in transcript_data])
         
         # Clean up the text
         full_text = full_text.replace('\n', ' ').strip()
@@ -125,10 +125,13 @@ def download_youtube_audio(url, output_dir=None):
     try:
         logger.info(f"Downloading audio from YouTube: {url}")
         
-        # Configure yt-dlp options
+        # Configure yt-dlp options with safe filename
+        import uuid
+        safe_filename = f"youtube_{uuid.uuid4().hex[:8]}"
+        
         ydl_opts = {
             'format': 'bestaudio/best',
-            'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
+            'outtmpl': os.path.join(output_dir, f'{safe_filename}.%(ext)s'),
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',
@@ -161,11 +164,17 @@ def download_youtube_audio(url, output_dir=None):
                             logger.error(f"Failed to download video {entry['title']}: {str(e)}")
             else:  # Single video
                 ydl.download([url])
-                # Construct expected filename
-                safe_title = re.sub(r'[^\w\-_\. ]', '_', info['title'])
-                filename = os.path.join(output_dir, f"{safe_title}.wav")
-                if os.path.exists(filename):
-                    downloaded_files.append(filename)
+                # Use safe filename instead of title-based name
+                expected_filename = os.path.join(output_dir, f"{safe_filename}.wav")
+                if os.path.exists(expected_filename):
+                    downloaded_files.append(expected_filename)
+                else:
+                    # Check for any .wav files in the output directory that might have been created
+                    for file in os.listdir(output_dir):
+                        if file.startswith(safe_filename) and file.endswith('.wav'):
+                            full_path = os.path.join(output_dir, file)
+                            downloaded_files.append(full_path)
+                            break
         
         logger.info(f"Successfully downloaded {len(downloaded_files)} audio files")
         return downloaded_files
