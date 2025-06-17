@@ -523,52 +523,136 @@ function mapVoiceSelection(selectedVoice, availableVoices, language) {
         return null;
     }
     
-    // Define voice mapping preferences
+    // Log all available voices for debugging
+    console.log('All available voices:');
+    availableVoices.forEach((voice, index) => {
+        console.log(`${index}: ${voice.name} (${voice.lang}) - ${voice.localService ? 'Local' : 'Remote'}`);
+    });
+    
+    // Define comprehensive voice mapping with multiple fallback strategies
     const voiceMapping = {
-        'google_en_us_female': ['Google US English', 'en-US', 'female'],
-        'google_en_us_male': ['Google US English', 'en-US', 'male'],
-        'google_en_us_wavenet_a': ['Wavenet', 'en-US', 'female'],
-        'google_en_us_wavenet_b': ['Wavenet', 'en-US', 'male'],
-        'google_en_us_wavenet_c': ['Wavenet', 'en-US', 'female'],
-        'google_en_us_wavenet_d': ['Wavenet', 'en-US', 'male'],
-        'google_en_us_neural2_a': ['Neural', 'en-US', 'female'],
-        'google_en_us_neural2_c': ['Neural', 'en-US', 'male'],
-        'google_en_uk': ['Google UK English', 'en-GB', 'female'],
-        'google_en_au': ['Google Australian English', 'en-AU', 'female'],
-        'google_en_ca': ['Google Canadian English', 'en-CA', 'female']
+        'google_en_us_female': {
+            primary: ['Google US English', 'Samantha', 'Victoria', 'Allison'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'google_en_us_male': {
+            primary: ['Google US English', 'Alex', 'Fred', 'Daniel'],
+            lang: 'en-US', 
+            gender: 'male'
+        },
+        'google_en_us_wavenet_a': {
+            primary: ['Samantha', 'Victoria', 'Allison', 'Ava'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'google_en_us_wavenet_b': {
+            primary: ['Alex', 'Fred', 'Daniel', 'Nathan'],
+            lang: 'en-US',
+            gender: 'male'
+        },
+        'google_en_us_wavenet_c': {
+            primary: ['Karen', 'Susan', 'Victoria'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'google_en_us_wavenet_d': {
+            primary: ['Tom', 'Aaron', 'Alex'],
+            lang: 'en-US',
+            gender: 'male'
+        },
+        'google_en_us_neural2_a': {
+            primary: ['Ava', 'Samantha', 'Victoria'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'google_en_us_neural2_c': {
+            primary: ['Alex', 'Daniel', 'Fred'],
+            lang: 'en-US',
+            gender: 'male'
+        },
+        'google_en_uk': {
+            primary: ['Daniel', 'Kate', 'Oliver'],
+            lang: 'en-GB',
+            gender: 'female'
+        },
+        'google_en_au': {
+            primary: ['Karen', 'Catherine'],
+            lang: 'en-AU',
+            gender: 'female'
+        },
+        'google_en_ca': {
+            primary: ['Alex', 'Samantha'],
+            lang: 'en-CA',
+            gender: 'female'
+        }
     };
     
     const mapping = voiceMapping[selectedVoice];
     if (!mapping) {
-        // Fallback to first available voice for the language
+        console.log('No mapping found for:', selectedVoice);
         return availableVoices.find(voice => voice.lang.startsWith(language.substring(0, 2))) || availableVoices[0];
     }
     
-    const [namePattern, langCode, gender] = mapping;
+    console.log('Voice mapping for', selectedVoice, ':', mapping);
     
-    // Try to find exact match by name and language
-    let matchedVoice = availableVoices.find(voice => 
-        voice.name.toLowerCase().includes(namePattern.toLowerCase()) && 
-        voice.lang === langCode
-    );
+    let matchedVoice = null;
     
-    // Try to find by language and gender preference
-    if (!matchedVoice) {
-        const genderKeywords = gender === 'male' ? ['male', 'man', 'david', 'alex', 'daniel'] : ['female', 'woman', 'samantha', 'karen', 'victoria'];
+    // Strategy 1: Try exact name matches
+    for (const voiceName of mapping.primary) {
         matchedVoice = availableVoices.find(voice => 
-            voice.lang === langCode &&
+            voice.name.toLowerCase() === voiceName.toLowerCase() && 
+            voice.lang === mapping.lang
+        );
+        if (matchedVoice) {
+            console.log('Exact match found:', matchedVoice.name);
+            break;
+        }
+    }
+    
+    // Strategy 2: Try partial name matches with language
+    if (!matchedVoice) {
+        for (const voiceName of mapping.primary) {
+            matchedVoice = availableVoices.find(voice => 
+                voice.name.toLowerCase().includes(voiceName.toLowerCase()) && 
+                voice.lang === mapping.lang
+            );
+            if (matchedVoice) {
+                console.log('Partial match found:', matchedVoice.name);
+                break;
+            }
+        }
+    }
+    
+    // Strategy 3: Gender-based matching with language
+    if (!matchedVoice) {
+        const genderKeywords = mapping.gender === 'male' ? 
+            ['male', 'man', 'alex', 'daniel', 'fred', 'tom', 'aaron', 'nathan'] : 
+            ['female', 'woman', 'samantha', 'karen', 'victoria', 'allison', 'ava', 'susan'];
+        
+        matchedVoice = availableVoices.find(voice => 
+            voice.lang === mapping.lang &&
             genderKeywords.some(keyword => voice.name.toLowerCase().includes(keyword))
         );
+        if (matchedVoice) {
+            console.log('Gender match found:', matchedVoice.name);
+        }
     }
     
-    // Fallback to any voice with matching language
+    // Strategy 4: Any voice with matching language
     if (!matchedVoice) {
-        matchedVoice = availableVoices.find(voice => voice.lang === langCode);
+        matchedVoice = availableVoices.find(voice => voice.lang === mapping.lang);
+        if (matchedVoice) {
+            console.log('Language match found:', matchedVoice.name);
+        }
     }
     
-    // Final fallback to any English voice
-    if (!matchedVoice && langCode.startsWith('en')) {
+    // Strategy 5: Any English voice if target was English
+    if (!matchedVoice && mapping.lang.startsWith('en')) {
         matchedVoice = availableVoices.find(voice => voice.lang.startsWith('en'));
+        if (matchedVoice) {
+            console.log('English fallback found:', matchedVoice.name);
+        }
     }
     
     return matchedVoice || availableVoices[0];
@@ -591,63 +675,61 @@ function speakTextWithSelectedVoice(text, config) {
             // Cancel any existing speech
             speechSynthesis.cancel();
             
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = config.language;
-            
-            // Get available voices and map selection
-            const voices = speechSynthesis.getVoices();
-            const selectedVoice = mapVoiceSelection(config.voice, voices, config.language);
-            
-            if (selectedVoice) {
-                utterance.voice = selectedVoice;
-                console.log('Using voice:', selectedVoice.name, selectedVoice.lang);
-            } else {
-                console.log('No voice selected, using default');
-            }
-            
-            // Set speech properties based on voice selection
-            if (config.voice && config.voice.includes('male')) {
-                utterance.pitch = 0.8; // Lower pitch for male voices
-            } else {
-                utterance.pitch = 1.0; // Default pitch for female voices
-            }
-            
-            utterance.rate = 0.9; // Slightly slower for better clarity
-            utterance.volume = 1.0; // Full volume
-            
-            // Add event listeners for feedback
-            utterance.onstart = () => {
-                console.log('Speech started');
-                showMessage('Reading text aloud with selected voice...', 'info');
-            };
-            
-            utterance.onend = () => {
-                console.log('Speech ended');
-                showMessage('Finished reading text aloud', 'success');
-            };
-            
-            utterance.onerror = (event) => {
-                console.error('Speech error:', event.error);
-                showMessage(`Read-aloud error: ${event.error}`, 'warning');
-            };
-            
-            utterance.onpause = () => {
-                console.log('Speech paused');
-            };
-            
-            utterance.onresume = () => {
-                console.log('Speech resumed');
-            };
-            
-            console.log('Starting speech synthesis...');
-            speechSynthesis.speak(utterance);
-            
-            // Chrome workaround - sometimes speech doesn't start without this
+            // Wait a bit for cancellation to complete
             setTimeout(() => {
-                if (speechSynthesis.paused) {
-                    speechSynthesis.resume();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = config.language;
+                
+                // Get fresh voices list every time
+                const voices = speechSynthesis.getVoices();
+                console.log('Available voices for selection:', voices.length);
+                console.log('Selected voice ID:', config.voice);
+                
+                const selectedVoice = mapVoiceSelection(config.voice, voices, config.language);
+                
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                    console.log('Using voice:', selectedVoice.name, selectedVoice.lang);
+                } else {
+                    console.log('No voice mapped, using default. Voice ID was:', config.voice);
                 }
-            }, 100);
+                
+                // Set speech properties based on voice selection
+                if (config.voice && config.voice.includes('male')) {
+                    utterance.pitch = 0.8; // Lower pitch for male voices
+                } else {
+                    utterance.pitch = 1.0; // Default pitch for female voices
+                }
+                
+                utterance.rate = 0.9; // Slightly slower for better clarity
+                utterance.volume = 1.0; // Full volume
+                
+                // Add event listeners for feedback
+                utterance.onstart = () => {
+                    console.log('Speech started');
+                    showMessage('Reading text aloud with selected voice...', 'info');
+                };
+                
+                utterance.onend = () => {
+                    console.log('Speech ended');
+                    showMessage('Finished reading text aloud', 'success');
+                };
+                
+                utterance.onerror = (event) => {
+                    console.error('Speech error:', event.error);
+                    showMessage(`Read-aloud error: ${event.error}`, 'warning');
+                };
+                
+                console.log('Starting speech synthesis...');
+                speechSynthesis.speak(utterance);
+                
+                // Chrome workaround
+                setTimeout(() => {
+                    if (speechSynthesis.paused) {
+                        speechSynthesis.resume();
+                    }
+                }, 100);
+            }, 50); // Small delay to ensure cancellation completes
         };
 
         // Check if voices are already loaded
