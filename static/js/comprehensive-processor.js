@@ -35,8 +35,29 @@ function initializeTabs() {
             // Add active class to clicked tab and corresponding content
             this.classList.add('active');
             document.getElementById(targetTab + '-content').classList.add('active');
+            
+            // Update configuration options based on selected tab
+            updateConfigurationOptions(targetTab);
         });
     });
+    
+    // Initialize with file tab active
+    updateConfigurationOptions('file');
+}
+
+function updateConfigurationOptions(inputType) {
+    const ttsOptions = document.getElementById('tts-options');
+    const transcriptionOptions = document.getElementById('transcription-options');
+    
+    if (inputType === 'text' || inputType === 'document') {
+        // Show TTS options for text and document inputs
+        ttsOptions.classList.remove('d-none');
+        transcriptionOptions.classList.add('d-none');
+    } else {
+        // Show transcription options for file, youtube inputs
+        ttsOptions.classList.add('d-none');
+        transcriptionOptions.classList.remove('d-none');
+    }
 }
 
 function initializeFileDropZones() {
@@ -173,7 +194,8 @@ async function processFiles(files, inputType) {
         
         if (result.success) {
             updateProgress(50, 'Processing started...');
-            pollJobStatus(result.job_id);
+            const config = getProcessingConfig();
+            pollJobStatus(result.job_id, config.liveDisplay);
         } else {
             throw new Error(result.error || 'Processing failed');
         }
@@ -217,7 +239,8 @@ async function processYouTubeURL(url) {
         
         if (result.success) {
             updateProgress(30, 'Processing started...');
-            pollJobStatus(result.job_id);
+            const config = getProcessingConfig();
+            pollJobStatus(result.job_id, config.liveDisplay);
         } else {
             throw new Error(result.error || 'Processing failed');
         }
@@ -234,16 +257,40 @@ async function processTextToSpeech(text) {
     
     const config = getProcessingConfig();
     
+    // Handle read-aloud functionality
+    if (config.readAloud) {
+        try {
+            // Use browser's built-in speech synthesis for immediate playback
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = config.language;
+                speechSynthesis.speak(utterance);
+                showMessage('Reading text aloud...', 'info');
+            } else {
+                showMessage('Read-aloud not supported in this browser', 'warning');
+            }
+        } catch (error) {
+            showMessage('Read-aloud failed: ' + error.message, 'warning');
+        }
+    }
+    
+    // Only process MP3 creation if requested
+    if (!config.createMp3) {
+        hideProgress();
+        showMessage('Text read aloud successfully', 'success');
+        return;
+    }
+    
     const requestData = {
         input_type: 'text',
         input_text: text,
         target_language: config.language,
-        output_formats: ['mp3'], // TTS always outputs audio
+        output_formats: ['mp3'],
         voice_id: config.voice
     };
     
     try {
-        updateProgress(30, 'Generating speech...');
+        updateProgress(30, 'Generating MP3 file...');
         
         const response = await fetch('/api/process', {
             method: 'POST',
@@ -261,7 +308,7 @@ async function processTextToSpeech(text) {
         
         if (result.success) {
             updateProgress(50, 'Processing speech...');
-            pollJobStatus(result.job_id);
+            pollJobStatus(result.job_id, config.liveDisplay);
         } else {
             throw new Error(result.error || 'Processing failed');
         }
@@ -272,10 +319,11 @@ async function processTextToSpeech(text) {
     }
 }
 
-async function pollJobStatus(jobId) {
+async function pollJobStatus(jobId, liveDisplay = false) {
     const pollInterval = 2000; // 2 seconds
     const maxAttempts = 300; // 10 minutes max
     let attempts = 0;
+    let lastTextLength = 0;
     
     const poll = async () => {
         attempts++;
@@ -289,6 +337,12 @@ async function pollJobStatus(jobId) {
             const status = await response.json();
             
             updateProgress(status.progress_percentage, status.status_message || 'Processing...');
+            
+            // Handle live text display for transcription
+            if (liveDisplay && status.result_text && status.result_text.length > lastTextLength) {
+                updateLiveTextDisplay(status.result_text);
+                lastTextLength = status.result_text.length;
+            }
             
             if (status.status === 'completed') {
                 updateProgress(100, 'Processing complete!');
@@ -319,18 +373,66 @@ async function pollJobStatus(jobId) {
     poll();
 }
 
+function updateLiveTextDisplay(text) {
+    const resultsSection = document.getElementById('results-section');
+    const resultContent = document.getElementById('result-content');
+    
+    // Show results section if not already visible
+    if (resultsSection.classList.contains('d-none')) {
+        resultsSection.classList.remove('d-none');
+        resultContent.innerHTML = `
+            <div class="live-text-display">
+                <h6><i class="fas fa-eye"></i> Live Transcription:</h6>
+                <div id="live-text-content" class="text-content" style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto;">
+                    ${text.replace(/\n/g, '<br>')}
+                </div>
+            </div>
+        `;
+    } else {
+        // Update existing live text content
+        const liveTextContent = document.getElementById('live-text-content');
+        if (liveTextContent) {
+            liveTextContent.innerHTML = text.replace(/\n/g, '<br>');
+            // Auto-scroll to bottom
+            liveTextContent.scrollTop = liveTextContent.scrollHeight;
+        }
+    }
+}
+
 function getProcessingConfig() {
-    const language = document.getElementById('target-language').value;
-    const voice = document.getElementById('voice-selection').value;
+    // Determine which configuration section is active
+    const ttsOptions = document.getElementById('tts-options');
+    const transcriptionOptions = document.getElementById('transcription-options');
     
-    const formatCheckboxes = document.querySelectorAll('input[type="checkbox"][id^="format-"]:checked');
-    const formats = Array.from(formatCheckboxes).map(cb => cb.value);
-    
-    return {
-        language: language,
-        voice: voice,
-        formats: formats.length > 0 ? formats : ['text']
-    };
+    if (!ttsOptions.classList.contains('d-none')) {
+        // TTS configuration (text/document input)
+        const language = document.getElementById('tts-language').value;
+        const voice = document.getElementById('tts-voice').value;
+        const readAloud = document.getElementById('read-aloud-now').checked;
+        const createMp3 = document.getElementById('auto-create-mp3').checked;
+        
+        return {
+            language: language,
+            voice: voice,
+            formats: createMp3 ? ['mp3'] : [],
+            readAloud: readAloud,
+            createMp3: createMp3
+        };
+    } else {
+        // Transcription configuration (audio/video/youtube input)
+        const language = document.getElementById('output-language').value;
+        const liveDisplay = document.getElementById('live-text-display').checked;
+        
+        const formatCheckboxes = document.querySelectorAll('input[type="checkbox"][id^="format-"]:checked');
+        const formats = Array.from(formatCheckboxes).map(cb => cb.value);
+        
+        return {
+            language: language,
+            voice: 'google_en', // Default voice for transcription
+            formats: formats.length > 0 ? formats : ['text'],
+            liveDisplay: liveDisplay
+        };
+    }
 }
 
 function showProgress() {
