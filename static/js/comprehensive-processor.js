@@ -635,6 +635,101 @@ function mapVoiceSelection(selectedVoice, availableVoices, language) {
             primary: ['Tessa'],
             lang: 'en-ZA',
             gender: 'female'
+        },
+        'system_allison': {
+            primary: ['Allison'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'system_ava': {
+            primary: ['Ava'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'system_fred': {
+            primary: ['Fred'],
+            lang: 'en-US',
+            gender: 'male'
+        },
+        'system_oliver': {
+            primary: ['Oliver'],
+            lang: 'en-GB',
+            gender: 'male'
+        },
+        'system_susan': {
+            primary: ['Susan'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'system_tom': {
+            primary: ['Tom'],
+            lang: 'en-US',
+            gender: 'male'
+        },
+        'system_zoe': {
+            primary: ['Zoe'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'system_aaron': {
+            primary: ['Aaron'],
+            lang: 'en-US',
+            gender: 'male'
+        },
+        'system_catherine': {
+            primary: ['Catherine'],
+            lang: 'en-AU',
+            gender: 'female'
+        },
+        'system_moira': {
+            primary: ['Moira'],
+            lang: 'en-IE',
+            gender: 'female'
+        },
+        'system_whisper': {
+            primary: ['Whisper'],
+            lang: 'en-US',
+            gender: 'neutral'
+        },
+        'system_superstar': {
+            primary: ['Superstar'],
+            lang: 'en-US',
+            gender: 'neutral'
+        },
+        'system_trinoids': {
+            primary: ['Trinoids'],
+            lang: 'en-US',
+            gender: 'neutral'
+        },
+        'system_zarvox': {
+            primary: ['Zarvox'],
+            lang: 'en-US',
+            gender: 'neutral'
+        },
+        'system_wobble': {
+            primary: ['Wobble'],
+            lang: 'en-US',
+            gender: 'neutral'
+        },
+        'system_thomas': {
+            primary: ['Thomas'],
+            lang: 'fr-FR',
+            gender: 'male'
+        },
+        'system_marie': {
+            primary: ['Marie'],
+            lang: 'fr-FR',
+            gender: 'female'
+        },
+        'system_anna': {
+            primary: ['Anna'],
+            lang: 'de-DE',
+            gender: 'female'
+        },
+        'system_jorge': {
+            primary: ['Jorge'],
+            lang: 'es-ES',
+            gender: 'male'
         }
     };
     
