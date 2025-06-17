@@ -1,0 +1,86 @@
+lawr@ubuai:/mnt/bigdisk/projects/faster-whisper-gpu$ cat smart_transcribe.py
+#!/usr/bin/env python3
+import os
+import sys
+import argparse
+import subprocess
+from pathlib import Path
+from datetime import datetime
+import yt_dlp
+from faster_whisper import WhisperModel
+
+def sanitize_filename(title):
+    return "".join(c for c in title if c.isalnum() or c in " -_").rstrip()
+
+def download_audio(url, out_path):
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': str(out_path),
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'wav',
+        }],
+        'quiet': True,
+        'no_warnings': True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        return info.get("title", "audio"), ydl.prepare_filename(info).replace(".webm", ".wav").replace(".m4a", ".wav")
+
+def transcribe_audio(audio_file, model, target_lang):
+    segments, _ = model.transcribe(audio_file, task="translate" if target_lang else "transcribe", language=target_lang)
+    return list(segments)
+
+def write_transcript(title, segments, md_path):
+    with open(md_path, "w", encoding="utf-8") as f:
+        f.write(f"# {title}\n\n")
+        for seg in segments:
+            line = f"[{seg.start:.2f} → {seg.end:.2f}] {seg.text}"
+            print(line)
+            f.write(line + "\n")
+
+def append_index(index_file, title, url, md_filename):
+    with open(index_file, "a", encoding="utf-8") as f:
+        f.write(f"- [{title}]({md_filename}) - [YouTube]({url})\n")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("url", help="YouTube video or playlist URL")
+    parser.add_argument("--translate", help="Target language (e.g., 'en', 'es')", default="en")
+    args = parser.parse_args()
+
+    is_playlist = "playlist?" in args.url
+    output_dir = Path.cwd()
+    index_file = output_dir / "index.md"
+    model = WhisperModel("medium", device="cuda", compute_type="float16")
+
+    if is_playlist:
+        playlist = yt_dlp.YoutubeDL({}).extract_info(args.url, download=False)
+        entries = playlist.get("entries", [])
+        print(f"📺 Detected playlist with {len(entries)} videos.")
+
+        for entry in entries:
+            try:
+                vid_url = f"https://www.youtube.com/watch?v={entry['id']}"
+                title, audio_path = download_audio(vid_url, output_dir / "%(title)s.%(ext)s")
+                clean_name = sanitize_filename(title)
+                md_file = output_dir / f"{clean_name}.md"
+                segments = transcribe_audio(audio_path, model, args.translate)
+                write_transcript(title, segments, md_file)
+                append_index(index_file, title, vid_url, md_file.name)
+            except Exception as e:
+                print(f"❌ Error processing {entry.get('url', '<unknown>')}: {e}")
+    else:
+        try:
+            title, audio_path = download_audio(args.url, output_dir / "%(title)s.%(ext)s")
+            clean_name = sanitize_filename(title)
+            md_file = output_dir / f"{clean_name}.md"
+            segments = transcribe_audio(audio_path, model, args.translate)
+            write_transcript(title, segments, md_file)
+            append_index(index_file, title, args.url, md_file.name)
+        except Exception as e:
+            print(f"❌ Error processing {args.url}: {e}")
+
+if __name__ == "__main__":
+    main()
+lawr@ubuai:/mnt/bigdisk/projects/faster-whisper-gpu$ 

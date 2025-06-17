@@ -259,19 +259,7 @@ async function processTextToSpeech(text) {
     
     // Handle read-aloud functionality
     if (config.readAloud) {
-        try {
-            // Use browser's built-in speech synthesis for immediate playback
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = config.language;
-                speechSynthesis.speak(utterance);
-                showMessage('Reading text aloud...', 'info');
-            } else {
-                showMessage('Read-aloud not supported in this browser', 'warning');
-            }
-        } catch (error) {
-            showMessage('Read-aloud failed: ' + error.message, 'warning');
-        }
+        speakTextWithSelectedVoice(text, config);
     }
     
     // Only process MP3 creation if requested
@@ -520,4 +508,137 @@ function formatFileSize(bytes) {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function mapVoiceSelection(selectedVoice, availableVoices, language) {
+    /**
+     * Maps the UI voice selection to browser speech synthesis voices
+     * @param {string} selectedVoice - Voice ID from the UI dropdown
+     * @param {Array} availableVoices - Available browser voices
+     * @param {string} language - Selected language
+     * @returns {SpeechSynthesisVoice|null} - Matched voice or null
+     */
+    
+    if (!availableVoices || availableVoices.length === 0) {
+        return null;
+    }
+    
+    // Define voice mapping preferences
+    const voiceMapping = {
+        'google_en_us_female': ['Google US English', 'en-US', 'female'],
+        'google_en_us_male': ['Google US English', 'en-US', 'male'],
+        'google_en_us_wavenet_a': ['Wavenet', 'en-US', 'female'],
+        'google_en_us_wavenet_b': ['Wavenet', 'en-US', 'male'],
+        'google_en_us_wavenet_c': ['Wavenet', 'en-US', 'female'],
+        'google_en_us_wavenet_d': ['Wavenet', 'en-US', 'male'],
+        'google_en_us_neural2_a': ['Neural', 'en-US', 'female'],
+        'google_en_us_neural2_c': ['Neural', 'en-US', 'male'],
+        'google_en_uk': ['Google UK English', 'en-GB', 'female'],
+        'google_en_au': ['Google Australian English', 'en-AU', 'female'],
+        'google_en_ca': ['Google Canadian English', 'en-CA', 'female']
+    };
+    
+    const mapping = voiceMapping[selectedVoice];
+    if (!mapping) {
+        // Fallback to first available voice for the language
+        return availableVoices.find(voice => voice.lang.startsWith(language.substring(0, 2))) || availableVoices[0];
+    }
+    
+    const [namePattern, langCode, gender] = mapping;
+    
+    // Try to find exact match by name and language
+    let matchedVoice = availableVoices.find(voice => 
+        voice.name.toLowerCase().includes(namePattern.toLowerCase()) && 
+        voice.lang === langCode
+    );
+    
+    // Try to find by language and gender preference
+    if (!matchedVoice) {
+        const genderKeywords = gender === 'male' ? ['male', 'man', 'david', 'alex', 'daniel'] : ['female', 'woman', 'samantha', 'karen', 'victoria'];
+        matchedVoice = availableVoices.find(voice => 
+            voice.lang === langCode &&
+            genderKeywords.some(keyword => voice.name.toLowerCase().includes(keyword))
+        );
+    }
+    
+    // Fallback to any voice with matching language
+    if (!matchedVoice) {
+        matchedVoice = availableVoices.find(voice => voice.lang === langCode);
+    }
+    
+    // Final fallback to any English voice
+    if (!matchedVoice && langCode.startsWith('en')) {
+        matchedVoice = availableVoices.find(voice => voice.lang.startsWith('en'));
+    }
+    
+    return matchedVoice || availableVoices[0];
+}
+
+function speakTextWithSelectedVoice(text, config) {
+    /**
+     * Speaks text using browser speech synthesis with the selected voice
+     * @param {string} text - Text to speak
+     * @param {Object} config - Configuration object with voice and language settings
+     */
+    try {
+        if (!('speechSynthesis' in window)) {
+            showMessage('Read-aloud not supported in this browser', 'warning');
+            return;
+        }
+
+        // Function to actually speak the text
+        const speakText = () => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = config.language;
+            
+            // Get available voices and map selection
+            const voices = speechSynthesis.getVoices();
+            const selectedVoice = mapVoiceSelection(config.voice, voices, config.language);
+            
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+                console.log('Using voice:', selectedVoice.name, selectedVoice.lang);
+            }
+            
+            // Set speech properties based on voice selection
+            if (config.voice && config.voice.includes('male')) {
+                utterance.pitch = 0.8; // Lower pitch for male voices
+            } else {
+                utterance.pitch = 1.0; // Default pitch for female voices
+            }
+            
+            utterance.rate = 0.9; // Slightly slower for better clarity
+            utterance.volume = 0.8;
+            
+            // Add event listeners for feedback
+            utterance.onstart = () => {
+                showMessage('Reading text aloud with selected voice...', 'info');
+            };
+            
+            utterance.onend = () => {
+                showMessage('Finished reading text aloud', 'success');
+            };
+            
+            utterance.onerror = (event) => {
+                showMessage(`Read-aloud error: ${event.error}`, 'warning');
+            };
+            
+            speechSynthesis.speak(utterance);
+        };
+
+        // Check if voices are already loaded
+        const voices = speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            speakText();
+        } else {
+            // Wait for voices to be loaded
+            speechSynthesis.onvoiceschanged = () => {
+                speakText();
+                speechSynthesis.onvoiceschanged = null; // Remove listener
+            };
+        }
+        
+    } catch (error) {
+        showMessage('Read-aloud failed: ' + error.message, 'warning');
+    }
 }
