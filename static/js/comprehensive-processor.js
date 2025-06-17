@@ -585,6 +585,56 @@ function mapVoiceSelection(selectedVoice, availableVoices, language) {
             primary: ['Alex', 'Samantha'],
             lang: 'en-CA',
             gender: 'female'
+        },
+        'google_en_uk_female': {
+            primary: ['Google UK English Female', 'Kate', 'Stephanie'],
+            lang: 'en-GB',
+            gender: 'female'
+        },
+        'google_en_uk_male': {
+            primary: ['Google UK English Male', 'Daniel', 'Oliver'],
+            lang: 'en-GB',
+            gender: 'male'
+        },
+        'system_alex': {
+            primary: ['Alex'],
+            lang: 'en-US',
+            gender: 'male'
+        },
+        'system_samantha': {
+            primary: ['Samantha'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'system_victoria': {
+            primary: ['Victoria'],
+            lang: 'en-US',
+            gender: 'female'
+        },
+        'system_daniel': {
+            primary: ['Daniel'],
+            lang: 'en-GB',
+            gender: 'male'
+        },
+        'system_kate': {
+            primary: ['Kate'],
+            lang: 'en-GB',
+            gender: 'female'
+        },
+        'system_karen': {
+            primary: ['Karen'],
+            lang: 'en-AU',
+            gender: 'female'
+        },
+        'system_stephanie': {
+            primary: ['Stephanie'],
+            lang: 'en-GB',
+            gender: 'female'
+        },
+        'system_tessa': {
+            primary: ['Tessa'],
+            lang: 'en-ZA',
+            gender: 'female'
         }
     };
     
