@@ -198,9 +198,14 @@
                         <textarea id="text-input" class="form-control text-area" 
                                   placeholder="Enter your text here for speech synthesis..."></textarea>
                     </div>
-                    <button id="text-process" class="btn btn-primary">
-                        <i class="fas fa-volume-up"></i> Generate Speech
-                    </button>
+                    <div class="button-group">
+                        <button id="text-process" class="btn btn-primary">
+                            <i class="fas fa-volume-up"></i> Generate Speech
+                        </button>
+                        <button id="test-speech" class="btn btn-outline-secondary ms-2" onclick="testSpeechSynthesis()">
+                            <i class="fas fa-play"></i> Test Audio
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Document Tab -->

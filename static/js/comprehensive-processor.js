@@ -588,6 +588,9 @@ function speakTextWithSelectedVoice(text, config) {
 
         // Function to actually speak the text
         const speakText = () => {
+            // Cancel any existing speech
+            speechSynthesis.cancel();
+            
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = config.language;
             
@@ -598,6 +601,8 @@ function speakTextWithSelectedVoice(text, config) {
             if (selectedVoice) {
                 utterance.voice = selectedVoice;
                 console.log('Using voice:', selectedVoice.name, selectedVoice.lang);
+            } else {
+                console.log('No voice selected, using default');
             }
             
             // Set speech properties based on voice selection
@@ -608,22 +613,41 @@ function speakTextWithSelectedVoice(text, config) {
             }
             
             utterance.rate = 0.9; // Slightly slower for better clarity
-            utterance.volume = 0.8;
+            utterance.volume = 1.0; // Full volume
             
             // Add event listeners for feedback
             utterance.onstart = () => {
+                console.log('Speech started');
                 showMessage('Reading text aloud with selected voice...', 'info');
             };
             
             utterance.onend = () => {
+                console.log('Speech ended');
                 showMessage('Finished reading text aloud', 'success');
             };
             
             utterance.onerror = (event) => {
+                console.error('Speech error:', event.error);
                 showMessage(`Read-aloud error: ${event.error}`, 'warning');
             };
             
+            utterance.onpause = () => {
+                console.log('Speech paused');
+            };
+            
+            utterance.onresume = () => {
+                console.log('Speech resumed');
+            };
+            
+            console.log('Starting speech synthesis...');
             speechSynthesis.speak(utterance);
+            
+            // Chrome workaround - sometimes speech doesn't start without this
+            setTimeout(() => {
+                if (speechSynthesis.paused) {
+                    speechSynthesis.resume();
+                }
+            }, 100);
         };
 
         // Check if voices are already loaded
@@ -639,6 +663,134 @@ function speakTextWithSelectedVoice(text, config) {
         }
         
     } catch (error) {
+        console.error('Read-aloud error:', error);
         showMessage('Read-aloud failed: ' + error.message, 'warning');
     }
+}
+
+function testSpeechSynthesis() {
+    /**
+     * Comprehensive speech synthesis diagnostics
+     */
+    console.log('=== Speech Synthesis Diagnostics ===');
+    
+    // Check basic support
+    if (!('speechSynthesis' in window)) {
+        console.error('Speech synthesis not supported');
+        showMessage('Speech synthesis not supported in this browser', 'danger');
+        return;
+    }
+    
+    // Browser info
+    console.log('User Agent:', navigator.userAgent);
+    console.log('Platform:', navigator.platform);
+    
+    // Audio context check (for general audio support)
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('Audio Context State:', audioContext.state);
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                console.log('Audio context resumed');
+            });
+        }
+    } catch (e) {
+        console.log('Audio Context Error:', e.message);
+    }
+    
+    // Cancel any existing speech
+    speechSynthesis.cancel();
+    
+    // Voice availability
+    const voices = speechSynthesis.getVoices();
+    console.log('Available voices:', voices.length);
+    if (voices.length > 0) {
+        console.log('First voice:', voices[0].name, voices[0].lang);
+    } else {
+        console.log('No voices available, waiting for voices...');
+        speechSynthesis.onvoiceschanged = () => {
+            const newVoices = speechSynthesis.getVoices();
+            console.log('Voices loaded:', newVoices.length);
+            if (newVoices.length > 0) {
+                console.log('First voice:', newVoices[0].name, newVoices[0].lang);
+            }
+        };
+    }
+    
+    // Create test utterance
+    const testText = "Audio test. Can you hear this message?";
+    const utterance = new SpeechSynthesisUtterance(testText);
+    
+    // Basic settings
+    utterance.volume = 1.0;
+    utterance.rate = 0.8;
+    utterance.pitch = 1.0;
+    utterance.lang = 'en-US';
+    
+    // Set a specific voice if available
+    if (voices.length > 0) {
+        utterance.voice = voices[0];
+        console.log('Using voice:', voices[0].name);
+    }
+    
+    // Event handlers with detailed logging
+    utterance.onstart = () => {
+        console.log('✓ Speech STARTED');
+        showMessage('Audio test started - listen for speech...', 'info');
+    };
+    
+    utterance.onend = () => {
+        console.log('✓ Speech ENDED normally');
+        showMessage('Audio test completed successfully', 'success');
+    };
+    
+    utterance.onerror = (event) => {
+        console.error('✗ Speech ERROR:', event.error);
+        showMessage(`Audio test failed: ${event.error}`, 'danger');
+    };
+    
+    utterance.onpause = () => {
+        console.log('⏸ Speech PAUSED');
+    };
+    
+    utterance.onresume = () => {
+        console.log('▶ Speech RESUMED');
+    };
+    
+    utterance.onboundary = (event) => {
+        console.log('📍 Speech boundary:', event.name, event.charIndex);
+    };
+    
+    // Current state before speaking
+    console.log('Before speaking:');
+    console.log('- Speaking:', speechSynthesis.speaking);
+    console.log('- Pending:', speechSynthesis.pending);
+    console.log('- Paused:', speechSynthesis.paused);
+    
+    // Speak the utterance
+    console.log('🎤 Starting speech synthesis...');
+    speechSynthesis.speak(utterance);
+    
+    // Monitor progress
+    let checkCount = 0;
+    const checkInterval = setInterval(() => {
+        checkCount++;
+        console.log(`Check ${checkCount}:`, {
+            speaking: speechSynthesis.speaking,
+            pending: speechSynthesis.pending,
+            paused: speechSynthesis.paused
+        });
+        
+        if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+            clearInterval(checkInterval);
+            if (checkCount === 1) {
+                console.log('⚠ Speech never started');
+                showMessage('Audio test failed to start. Check browser permissions and volume.', 'warning');
+            }
+        }
+        
+        if (checkCount > 20) { // Stop after 10 seconds
+            clearInterval(checkInterval);
+        }
+    }, 500);
 }
