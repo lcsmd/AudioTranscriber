@@ -3,12 +3,16 @@ import logging
 import tempfile
 import uuid
 import time
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, send_file
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from utils.audio_converter import convert_mp3_to_wav
 from utils.whisper_client import send_to_whisper
-from models import db, Transcription
+from utils.youtube_processor import is_youtube_url, download_youtube_audio, get_youtube_info
+from utils.document_processor import process_document, get_document_info
+from utils.text_to_speech import convert_text_to_speech, get_available_voices
+from utils.output_formatter import generate_output_file, get_supported_formats
+from models import db, Transcription, ProcessingJob
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -45,13 +49,25 @@ else:
 
 # Configure upload folder
 UPLOAD_FOLDER = tempfile.gettempdir()
-ALLOWED_EXTENSIONS = {'mp3', 'wav'}
+ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'mp4', 'mov'}
+ALLOWED_DOCUMENT_EXTENSIONS = {'pdf', 'docx', 'txt'}
+ALL_ALLOWED_EXTENSIONS = ALLOWED_AUDIO_EXTENSIONS.union(ALLOWED_DOCUMENT_EXTENSIONS)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB limit
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def allowed_file(filename, file_type='all'):
+    if not filename or '.' not in filename:
+        return False
+    
+    extension = filename.rsplit('.', 1)[1].lower()
+    
+    if file_type == 'audio':
+        return extension in ALLOWED_AUDIO_EXTENSIONS
+    elif file_type == 'document':
+        return extension in ALLOWED_DOCUMENT_EXTENSIONS
+    else:
+        return extension in ALL_ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
@@ -179,6 +195,319 @@ def api_transcription_history():
     history = [t.to_dict() for t in transcriptions]
     
     return jsonify({'transcriptions': history})
+
+@app.route('/api/process', methods=['POST'])
+def api_process():
+    """Comprehensive processing endpoint for all input types"""
+    try:
+        # Determine input type and extract data
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # File upload
+            input_type = request.form.get('input_type', 'audio-video')
+            target_language = request.form.get('target_language', 'en')
+            voice_id = request.form.get('voice_id', 'google_en')
+            output_formats = request.form.get('output_formats', '["text"]')
+            
+            try:
+                output_formats = eval(output_formats)  # Convert string to list
+            except:
+                output_formats = ['text']
+            
+            files = request.files.getlist('files')
+            if not files or not files[0].filename:
+                return jsonify({'error': 'No files provided'}), 400
+            
+            # Create processing job
+            job = ProcessingJob(
+                job_type='transcription' if input_type == 'audio-video' else 'document_processing',
+                input_type='file',
+                target_language=target_language,
+                voice_id=voice_id,
+                output_formats=output_formats,
+                status='pending'
+            )
+            db.session.add(job)
+            db.session.flush()  # Get the job ID
+            
+            # Process files
+            processed_files = []
+            for file in files:
+                if file.filename and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    file_extension = filename.rsplit('.', 1)[1].lower()
+                    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                    file.save(filepath)
+                    
+                    job.original_filename = filename
+                    job.file_type = file_extension
+                    job.file_size = os.path.getsize(filepath)
+                    
+                    processed_files.append(filepath)
+            
+            db.session.commit()
+            
+            # Start background processing
+            process_job_async(job.id, processed_files)
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.id,
+                'message': 'Processing started'
+            })
+            
+        else:
+            # JSON request (YouTube, text, etc.)
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No data provided'}), 400
+            
+            input_type = data.get('input_type')
+            target_language = data.get('target_language', 'en')
+            voice_id = data.get('voice_id', 'google_en')
+            output_formats = data.get('output_formats', ['text'])
+            
+            if input_type == 'youtube':
+                source_url = data.get('source_url')
+                if not source_url or not is_youtube_url(source_url):
+                    return jsonify({'error': 'Invalid YouTube URL'}), 400
+                
+                job = ProcessingJob(
+                    job_type='transcription',
+                    input_type='youtube',
+                    source_url=source_url,
+                    target_language=target_language,
+                    voice_id=voice_id,
+                    output_formats=output_formats,
+                    status='pending'
+                )
+                
+            elif input_type == 'text':
+                input_text = data.get('input_text')
+                if not input_text or not input_text.strip():
+                    return jsonify({'error': 'No text provided'}), 400
+                
+                job = ProcessingJob(
+                    job_type='tts',
+                    input_type='text',
+                    input_text=input_text,
+                    target_language=target_language,
+                    voice_id=voice_id,
+                    output_formats=['mp3'],  # TTS always outputs audio
+                    status='pending'
+                )
+                
+            else:
+                return jsonify({'error': 'Unsupported input type'}), 400
+            
+            db.session.add(job)
+            db.session.commit()
+            
+            # Start background processing
+            process_job_async(job.id)
+            
+            return jsonify({
+                'success': True,
+                'job_id': job.id,
+                'message': 'Processing started'
+            })
+            
+    except Exception as e:
+        logger.error(f"Error in API process: {str(e)}")
+        return jsonify({'error': f"Processing failed: {str(e)}"}), 500
+
+@app.route('/api/job-status/<int:job_id>', methods=['GET'])
+def api_job_status(job_id):
+    """Get the status of a processing job"""
+    try:
+        job = ProcessingJob.query.get_or_404(job_id)
+        
+        status_message = {
+            'pending': 'Waiting to start...',
+            'processing': 'Processing in progress...',
+            'completed': 'Processing completed!',
+            'failed': 'Processing failed'
+        }.get(job.status, 'Unknown status')
+        
+        return jsonify({
+            'job_id': job.id,
+            'status': job.status,
+            'progress_percentage': job.progress_percentage,
+            'status_message': status_message,
+            'result_text': job.result_text,
+            'result_files': job.result_files,
+            'error_message': job.error_message,
+            'processing_time': job.processing_time
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting job status: {str(e)}")
+        return jsonify({'error': 'Failed to get job status'}), 500
+
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    """Download generated files"""
+    try:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.exists(file_path):
+            return send_file(file_path, as_attachment=True)
+        else:
+            return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        logger.error(f"Error downloading file: {str(e)}")
+        return jsonify({'error': 'Download failed'}), 500
+
+def process_job_async(job_id, file_paths=None):
+    """Process a job asynchronously (simplified version)"""
+    import threading
+    thread = threading.Thread(target=process_job_worker, args=(job_id, file_paths))
+    thread.daemon = True
+    thread.start()
+
+def process_job_worker(job_id, file_paths=None):
+    """Background worker to process jobs"""
+    try:
+        with app.app_context():
+            job = ProcessingJob.query.get(job_id)
+            if not job:
+                return
+            
+            job.status = 'processing'
+            job.progress_percentage = 10
+            db.session.commit()
+            
+            start_time = time.time()
+            result_files = []
+            
+            if job.job_type == 'transcription':
+                if job.input_type == 'file' and file_paths:
+                    # Process uploaded files
+                    all_transcriptions = []
+                    
+                    for i, filepath in enumerate(file_paths):
+                        job.progress_percentage = 20 + (i * 40 // len(file_paths))
+                        db.session.commit()
+                        
+                        try:
+                            # Convert to appropriate format if needed
+                            if job.file_type in ['mp3', 'mp4', 'mov']:
+                                wav_path = filepath.replace(f'.{job.file_type}', '.wav')
+                                if job.file_type == 'mp3':
+                                    convert_mp3_to_wav(filepath, wav_path)
+                                else:
+                                    # Use moviepy for video files
+                                    from moviepy.editor import VideoFileClip
+                                    video = VideoFileClip(filepath)
+                                    video.audio.write_audiofile(wav_path)
+                                    video.close()
+                                os.remove(filepath)
+                                filepath = wav_path
+                            
+                            # Transcribe
+                            transcription_result = send_to_whisper(filepath)
+                            
+                            if isinstance(transcription_result, dict) and 'text' in transcription_result:
+                                all_transcriptions.append(transcription_result['text'])
+                            else:
+                                all_transcriptions.append(str(transcription_result))
+                            
+                            os.remove(filepath)
+                            
+                        except Exception as e:
+                            logger.error(f"Error processing file {filepath}: {str(e)}")
+                            all_transcriptions.append(f"Error processing file: {str(e)}")
+                    
+                    job.result_text = '\n\n'.join(all_transcriptions)
+                    
+                elif job.input_type == 'youtube':
+                    # Process YouTube content
+                    job.progress_percentage = 30
+                    db.session.commit()
+                    
+                    audio_files = download_youtube_audio(job.source_url)
+                    all_transcriptions = []
+                    
+                    for i, audio_file in enumerate(audio_files):
+                        job.progress_percentage = 40 + (i * 30 // len(audio_files))
+                        db.session.commit()
+                        
+                        try:
+                            transcription_result = send_to_whisper(audio_file)
+                            if isinstance(transcription_result, dict) and 'text' in transcription_result:
+                                all_transcriptions.append(transcription_result['text'])
+                            else:
+                                all_transcriptions.append(str(transcription_result))
+                            os.remove(audio_file)
+                        except Exception as e:
+                            logger.error(f"Error transcribing {audio_file}: {str(e)}")
+                            all_transcriptions.append(f"Error transcribing: {str(e)}")
+                    
+                    job.result_text = '\n\n'.join(all_transcriptions)
+            
+            elif job.job_type == 'tts':
+                # Text to speech
+                job.progress_percentage = 40
+                db.session.commit()
+                
+                audio_file = convert_text_to_speech(job.input_text, job.voice_id)
+                result_files.append(os.path.basename(audio_file))
+                job.result_text = f"Speech generated from {len(job.input_text)} characters of text"
+            
+            elif job.job_type == 'document_processing':
+                # Document processing
+                if file_paths:
+                    all_text = []
+                    for filepath in file_paths:
+                        try:
+                            text = process_document(filepath, job.file_type)
+                            all_text.append(text)
+                            os.remove(filepath)
+                        except Exception as e:
+                            logger.error(f"Error processing document {filepath}: {str(e)}")
+                            all_text.append(f"Error processing document: {str(e)}")
+                    
+                    job.result_text = '\n\n'.join(all_text)
+            
+            # Generate output files in requested formats
+            job.progress_percentage = 80
+            db.session.commit()
+            
+            if job.result_text and job.output_formats:
+                metadata = {
+                    'filename': job.original_filename,
+                    'processing_time': int((time.time() - start_time) * 1000),
+                    'language': job.target_language,
+                    'created_at': job.created_at
+                }
+                
+                for format_type in job.output_formats:
+                    try:
+                        if format_type != 'mp3':  # Skip for TTS jobs
+                            output_file = generate_output_file(
+                                job.result_text, 
+                                format_type, 
+                                metadata,
+                                app.config['UPLOAD_FOLDER']
+                            )
+                            result_files.append(os.path.basename(output_file))
+                    except Exception as e:
+                        logger.error(f"Error generating {format_type} output: {str(e)}")
+            
+            # Update job completion
+            job.status = 'completed'
+            job.progress_percentage = 100
+            job.processing_time = int((time.time() - start_time) * 1000)
+            job.result_files = result_files
+            db.session.commit()
+            
+    except Exception as e:
+        logger.error(f"Error in job worker: {str(e)}")
+        with app.app_context():
+            job = ProcessingJob.query.get(job_id)
+            if job:
+                job.status = 'failed'
+                job.error_message = str(e)
+                db.session.commit()
 
 @app.route('/health', methods=['GET'])
 def health_check():

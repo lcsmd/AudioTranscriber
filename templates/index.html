@@ -1,98 +1,316 @@
 {% extends "layout.html" %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.css">
+<style>
+    .input-section {
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: white;
+    }
+    
+    .input-tabs {
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 20px;
+    }
+    
+    .input-tab {
+        padding: 10px 20px;
+        border: none;
+        background: none;
+        color: #6c757d;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s;
+    }
+    
+    .input-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+    
+    .input-content {
+        display: none;
+    }
+    
+    .input-content.active {
+        display: block;
+    }
+    
+    .drop-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 10px;
+        padding: 40px 20px;
+        text-align: center;
+        background-color: #f8f9fa;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .drop-area:hover, .drop-area.dragover {
+        border-color: var(--primary-color);
+        background-color: rgba(74, 109, 167, 0.05);
+    }
+    
+    .file-icon {
+        font-size: 3rem;
+        color: var(--secondary-color);
+        margin-bottom: 15px;
+    }
+    
+    .text-area {
+        min-height: 200px;
+        border-radius: 8px;
+    }
+    
+    .url-input {
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        font-size: 14px;
+    }
+    
+    .config-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .progress-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+        margin-top: 20px;
+    }
+    
+    .result-section {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .result-files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .result-file {
+        background: var(--light-color);
+        padding: 8px 15px;
+        border-radius: 5px;
+        text-decoration: none;
+        color: var(--primary-color);
+        transition: all 0.3s;
+    }
+    
+    .result-file:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-10">
-        <div class="card shadow">
-            <div class="card-body">
-                <h1 class="card-title text-center mb-4">Audio Transcription</h1>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-12">
+            <h1 class="text-center mb-4">Speech Processing Service</h1>
+            
+            <!-- Input Section -->
+            <div class="input-section">
+                <div class="input-tabs">
+                    <button class="input-tab active" data-tab="file">
+                        <i class="fas fa-file-audio"></i> Files
+                    </button>
+                    <button class="input-tab" data-tab="youtube">
+                        <i class="fab fa-youtube"></i> YouTube
+                    </button>
+                    <button class="input-tab" data-tab="text">
+                        <i class="fas fa-keyboard"></i> Text
+                    </button>
+                    <button class="input-tab" data-tab="document">
+                        <i class="fas fa-file-alt"></i> Documents
+                    </button>
+                </div>
                 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="upload-container">
-                            <h3><i class="fas fa-cloud-upload-alt"></i> Upload Audio</h3>
-                            <p class="text-muted">Upload MP3 or WAV files for transcription</p>
-                            
-                            <div id="upload-drop-area" class="drop-area">
-                                <form id="audio-upload-form" class="upload-form">
-                                    <input type="file" id="file-input" accept=".mp3,.wav" class="file-input" />
-                                    <label for="file-input" class="file-label">
-                                        <div class="file-icon">
-                                            <i class="fas fa-file-audio fa-3x"></i>
-                                        </div>
-                                        <div class="file-text">
-                                            <strong>Choose a file</strong> or drag it here
-                                        </div>
-                                        <div class="file-types">
-                                            Supported formats: MP3, WAV
-                                        </div>
-                                    </label>
-                                </form>
-                            </div>
-                            
-                            <div id="upload-progress-container" class="progress mt-3 d-none">
-                                <div id="upload-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                                     role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                            </div>
-                            
-                            <div id="upload-status" class="alert mt-3 d-none"></div>
-                        </div>
-                    </div>
+                <!-- File Upload Tab -->
+                <div id="file-content" class="input-content active">
+                    <h4><i class="fas fa-cloud-upload-alt"></i> Upload Audio/Video Files</h4>
+                    <p class="text-muted">Support for MP3, WAV, MP4, MOV files</p>
                     
-                    <div class="col-md-6">
-                        <div class="transcription-container">
-                            <h3><i class="fas fa-file-alt"></i> Transcription</h3>
-                            <p class="text-muted">Your transcribed text will appear here</p>
-                            
-                            <div id="transcription-box" class="transcription-box">
-                                <div id="transcription-placeholder" class="text-center py-5">
-                                    <i class="fas fa-comment-alt fa-3x mb-3 text-muted"></i>
-                                    <p>Upload an audio file to see the transcription</p>
-                                </div>
-                                <div id="transcription-content" class="d-none">
-                                    <div class="transcription-header">
-                                        <h4 id="transcription-filename">Filename.mp3</h4>
-                                        <div class="transcription-actions">
-                                            <button id="copy-transcription" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-copy"></i> Copy
-                                            </button>
-                                            <button id="download-transcription" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-download"></i> Download
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div id="transcription-text" class="transcription-text"></div>
-                                </div>
-                            </div>
+                    <div id="file-drop-area" class="drop-area">
+                        <div class="file-icon">
+                            <i class="fas fa-file-audio"></i>
                         </div>
+                        <div class="file-text">
+                            <strong>Choose files</strong> or drag them here
+                        </div>
+                        <div class="file-types">
+                            Supported: MP3, WAV, MP4, MOV
+                        </div>
+                        <input type="file" id="file-input" multiple accept=".mp3,.wav,.mp4,.mov" style="display: none;">
                     </div>
                 </div>
                 
-                <div class="row mt-4">
-                    <div class="col-12 text-center">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h5><i class="fas fa-info-circle"></i> How It Works</h5>
-                                <ol class="text-start instruction-list">
-                                    <li>Upload an MP3 or WAV audio file using the panel on the left</li>
-                                    <li>MP3 files will be automatically converted to WAV format</li>
-                                    <li>The file will be sent to the transcription service</li>
-                                    <li>Once processing is complete, your transcription will appear on the right</li>
-                                </ol>
+                <!-- YouTube Tab -->
+                <div id="youtube-content" class="input-content">
+                    <h4><i class="fab fa-youtube"></i> YouTube Videos & Playlists</h4>
+                    <p class="text-muted">Enter a YouTube video or playlist URL</p>
+                    
+                    <div class="form-group">
+                        <input type="url" id="youtube-url" class="form-control url-input" 
+                               placeholder="https://www.youtube.com/watch?v=... or playlist URL">
+                    </div>
+                    <button id="youtube-process" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Process YouTube Content
+                    </button>
+                </div>
+                
+                <!-- Text Tab -->
+                <div id="text-content" class="input-content">
+                    <h4><i class="fas fa-keyboard"></i> Text to Speech</h4>
+                    <p class="text-muted">Enter text to convert to speech</p>
+                    
+                    <div class="form-group">
+                        <textarea id="text-input" class="form-control text-area" 
+                                  placeholder="Enter your text here for speech synthesis..."></textarea>
+                    </div>
+                    <button id="text-process" class="btn btn-primary">
+                        <i class="fas fa-volume-up"></i> Generate Speech
+                    </button>
+                </div>
+                
+                <!-- Document Tab -->
+                <div id="document-content" class="input-content">
+                    <h4><i class="fas fa-file-alt"></i> Document Processing</h4>
+                    <p class="text-muted">Upload PDF, DOCX, or TXT files for text extraction</p>
+                    
+                    <div id="document-drop-area" class="drop-area">
+                        <div class="file-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="file-text">
+                            <strong>Choose documents</strong> or drag them here
+                        </div>
+                        <div class="file-types">
+                            Supported: PDF, DOCX, TXT
+                        </div>
+                        <input type="file" id="document-input" multiple accept=".pdf,.docx,.txt" style="display: none;">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Configuration Section -->
+            <div class="config-section">
+                <h4><i class="fas fa-cogs"></i> Processing Options</h4>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="target-language"><strong>Output Language:</strong></label>
+                            <select id="target-language" class="form-select">
+                                <option value="en">English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="de">German</option>
+                                <option value="it">Italian</option>
+                                <option value="pt">Portuguese</option>
+                                <option value="ru">Russian</option>
+                                <option value="ja">Japanese</option>
+                                <option value="ko">Korean</option>
+                                <option value="zh">Chinese</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="voice-selection"><strong>Voice (for TTS):</strong></label>
+                            <select id="voice-selection" class="form-select">
+                                <option value="google_en">Google English (Female)</option>
+                                <option value="google_en_uk">Google English UK (Female)</option>
+                                <option value="google_en_au">Google English Australia (Female)</option>
+                                <option value="google_es">Google Spanish (Female)</option>
+                                <option value="google_fr">Google French (Female)</option>
+                                <option value="google_de">Google German (Female)</option>
+                                <option value="system_default">System Default Voice</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label><strong>Output Formats:</strong></label>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="format-text" value="text" checked>
+                                    <label for="format-text">Text</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="format-markdown" value="markdown">
+                                    <label for="format-markdown">Markdown</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="format-word" value="word">
+                                    <label for="format-word">Word</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="format-pdf" value="pdf">
+                                    <label for="format-pdf">PDF</label>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            <!-- Progress Section -->
+            <div id="progress-section" class="progress-container d-none">
+                <h5><i class="fas fa-spinner fa-spin"></i> Processing...</h5>
+                <div class="progress mb-3">
+                    <div id="main-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         style="width: 0%">0%</div>
+                </div>
+                <div id="progress-status">Initializing...</div>
+            </div>
+            
+            <!-- Results Section -->
+            <div id="results-section" class="result-section d-none">
+                <h5><i class="fas fa-check-circle text-success"></i> Processing Complete</h5>
+                <div id="result-content"></div>
+                <div id="result-downloads" class="result-files"></div>
+            </div>
+            
+            <!-- Status Messages -->
+            <div id="status-messages"></div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+<script src="{{ url_for('static', filename='js/comprehensive-processor.js') }}"></script>
 {% endblock %}
