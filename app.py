@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from utils.audio_converter import convert_mp3_to_wav
 from utils.whisper_client import send_to_whisper
-from utils.youtube_processor import is_youtube_url, download_youtube_audio, get_youtube_info
+from utils.youtube_processor import is_youtube_url, download_youtube_audio, get_youtube_info, get_youtube_transcript
 from utils.document_processor import process_document, get_document_info
 from utils.text_to_speech import convert_text_to_speech, get_available_voices
 from utils.output_formatter import generate_output_file, get_supported_formats
@@ -272,6 +272,9 @@ def api_process():
                 if not source_url or not is_youtube_url(source_url):
                     return jsonify({'error': 'Invalid YouTube URL'}), 400
                 
+                # Extract YouTube processing options
+                youtube_options = data.get('youtubeOptions', {})
+                
                 job = ProcessingJob(
                     job_type='transcription',
                     input_type='youtube',
@@ -279,6 +282,7 @@ def api_process():
                     target_language=target_language,
                     voice_id=voice_id,
                     output_formats=output_formats,
+                    job_metadata={'youtubeOptions': youtube_options},
                     status='pending'
                 )
                 
@@ -420,29 +424,68 @@ def process_job_worker(job_id, file_paths=None):
                     job.result_text = '\n\n'.join(all_transcriptions)
                     
                 elif job.input_type == 'youtube':
-                    # Process YouTube content
+                    # Process YouTube content with transcript options
                     job.progress_percentage = 30
                     db.session.commit()
                     
-                    audio_files = download_youtube_audio(job.source_url)
-                    all_transcriptions = []
+                    # Get YouTube options from job metadata
+                    youtube_options = job.job_metadata.get('youtubeOptions', {}) if job.job_metadata else {}
+                    pull_transcript = youtube_options.get('pullTranscript', True)
+                    transcribe_audio = youtube_options.get('transcribeAudio', False)
                     
-                    for i, audio_file in enumerate(audio_files):
-                        job.progress_percentage = 40 + (i * 30 // len(audio_files))
+                    all_transcriptions = []
+                    transcript_sources = []
+                    
+                    # Try to pull existing transcript first if requested
+                    if pull_transcript:
+                        job.progress_percentage = 35
                         db.session.commit()
                         
-                        try:
-                            transcription_result = send_to_whisper(audio_file)
-                            if isinstance(transcription_result, dict) and 'text' in transcription_result:
-                                all_transcriptions.append(transcription_result['text'])
-                            else:
-                                all_transcriptions.append(str(transcription_result))
-                            os.remove(audio_file)
-                        except Exception as e:
-                            logger.error(f"Error transcribing {audio_file}: {str(e)}")
-                            all_transcriptions.append(f"Error transcribing: {str(e)}")
+                        transcript_result = get_youtube_transcript(job.source_url)
+                        if transcript_result['success']:
+                            all_transcriptions.append(transcript_result['text'])
+                            transcript_sources.append(f"YouTube Transcript ({transcript_result['language']})")
+                            logger.info(f"Successfully extracted YouTube transcript")
+                        else:
+                            logger.info(f"No transcript available: {transcript_result['error']}")
+                            # If transcript not available and user didn't want audio transcription, enable it
+                            if not transcribe_audio:
+                                transcribe_audio = True
+                                logger.info("Automatically enabling audio transcription as fallback")
                     
-                    job.result_text = '\n\n'.join(all_transcriptions)
+                    # Transcribe from audio if requested or as fallback
+                    if transcribe_audio or not all_transcriptions:
+                        job.progress_percentage = 50
+                        db.session.commit()
+                        
+                        audio_files = download_youtube_audio(job.source_url)
+                        
+                        for i, audio_file in enumerate(audio_files):
+                            job.progress_percentage = 55 + (i * 25 // len(audio_files))
+                            db.session.commit()
+                            
+                            try:
+                                transcription_result = send_to_whisper(audio_file)
+                                if isinstance(transcription_result, dict) and 'text' in transcription_result:
+                                    all_transcriptions.append(transcription_result['text'])
+                                    transcript_sources.append("Audio Transcription")
+                                else:
+                                    all_transcriptions.append(str(transcription_result))
+                                    transcript_sources.append("Audio Transcription (Error)")
+                                os.remove(audio_file)
+                            except Exception as e:
+                                logger.error(f"Error transcribing {audio_file}: {str(e)}")
+                                all_transcriptions.append(f"Error transcribing: {str(e)}")
+                                transcript_sources.append("Audio Transcription (Error)")
+                    
+                    # Combine results with source information
+                    if len(all_transcriptions) > 1:
+                        formatted_results = []
+                        for i, (text, source) in enumerate(zip(all_transcriptions, transcript_sources)):
+                            formatted_results.append(f"=== {source} ===\n{text}")
+                        job.result_text = '\n\n'.join(formatted_results)
+                    else:
+                        job.result_text = all_transcriptions[0] if all_transcriptions else "No transcript available"
             
             elif job.job_type == 'tts':
                 # Text to speech

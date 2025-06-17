@@ -3,7 +3,7 @@ import tempfile
 import logging
 from yt_dlp import YoutubeDL
 import re
-from youtube_transcript_api._api import YouTubeTranscriptApi
+from youtube_transcript_api import YouTubeTranscriptApi
 from urllib.parse import urlparse, parse_qs
 
 logger = logging.getLogger(__name__)
