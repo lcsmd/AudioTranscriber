@@ -9,46 +9,146 @@ logger = logging.getLogger(__name__)
 
 # Available voices configuration
 AVAILABLE_VOICES = {
-    'google_en': {
-        'name': 'Google English (Female)',
+    # American English Voices
+    'google_en_us_female': {
+        'name': 'Google US English (Female)',
         'engine': 'gtts',
         'lang': 'en',
-        'tld': 'com'
+        'tld': 'com',
+        'slow': False
     },
+    'google_en_us_male': {
+        'name': 'Google US English (Male)',
+        'engine': 'gtts',
+        'lang': 'en',
+        'tld': 'com',
+        'slow': True  # Slower speech for male-sounding effect
+    },
+    'google_en_us_wavenet_a': {
+        'name': 'US WaveNet A (Female)',
+        'engine': 'gtts',
+        'lang': 'en',
+        'tld': 'us',
+        'slow': False
+    },
+    'google_en_us_wavenet_b': {
+        'name': 'US WaveNet B (Male)',
+        'engine': 'gtts',
+        'lang': 'en',
+        'tld': 'us',
+        'slow': True
+    },
+    'google_en_us_wavenet_c': {
+        'name': 'US WaveNet C (Female)',
+        'engine': 'gtts',
+        'lang': 'en',
+        'tld': 'com',
+        'slow': False
+    },
+    'google_en_us_wavenet_d': {
+        'name': 'US WaveNet D (Male)',
+        'engine': 'gtts',
+        'lang': 'en',
+        'tld': 'com',
+        'slow': True
+    },
+    'google_en_us_neural2_a': {
+        'name': 'US Neural2 A (Female)',
+        'engine': 'gtts',
+        'lang': 'en',
+        'tld': 'us',
+        'slow': False
+    },
+    'google_en_us_neural2_c': {
+        'name': 'US Neural2 C (Male)',
+        'engine': 'gtts',
+        'lang': 'en',
+        'tld': 'us',
+        'slow': True
+    },
+    
+    # Other English Variants
     'google_en_uk': {
         'name': 'Google English UK (Female)',
         'engine': 'gtts',
         'lang': 'en',
-        'tld': 'co.uk'
+        'tld': 'co.uk',
+        'slow': False
     },
     'google_en_au': {
         'name': 'Google English Australia (Female)',
         'engine': 'gtts',
         'lang': 'en',
-        'tld': 'com.au'
+        'tld': 'com.au',
+        'slow': False
     },
+    'google_en_ca': {
+        'name': 'Google English Canada (Female)',
+        'engine': 'gtts',
+        'lang': 'en',
+        'tld': 'ca',
+        'slow': False
+    },
+    
+    # Other Languages with Male/Female Options
     'google_es': {
         'name': 'Google Spanish (Female)',
         'engine': 'gtts',
         'lang': 'es',
-        'tld': 'com'
+        'tld': 'com',
+        'slow': False
+    },
+    'google_es_male': {
+        'name': 'Google Spanish (Male)',
+        'engine': 'gtts',
+        'lang': 'es',
+        'tld': 'com.mx',
+        'slow': True
     },
     'google_fr': {
         'name': 'Google French (Female)',
         'engine': 'gtts',
         'lang': 'fr',
-        'tld': 'com'
+        'tld': 'com',
+        'slow': False
+    },
+    'google_fr_male': {
+        'name': 'Google French (Male)',
+        'engine': 'gtts',
+        'lang': 'fr',
+        'tld': 'ca',
+        'slow': True
     },
     'google_de': {
         'name': 'Google German (Female)',
         'engine': 'gtts',
         'lang': 'de',
-        'tld': 'com'
+        'tld': 'com',
+        'slow': False
     },
+    'google_de_male': {
+        'name': 'Google German (Male)',
+        'engine': 'gtts',
+        'lang': 'de',
+        'tld': 'at',
+        'slow': True
+    },
+    
+    # System Voices
     'system_default': {
         'name': 'System Default Voice',
         'engine': 'pyttsx3',
         'voice_id': None
+    },
+    'system_male': {
+        'name': 'System Male Voice',
+        'engine': 'pyttsx3',
+        'voice_type': 'male'
+    },
+    'system_female': {
+        'name': 'System Female Voice',
+        'engine': 'pyttsx3',
+        'voice_type': 'female'
     }
 }
 
@@ -80,7 +180,7 @@ def text_to_speech_gtts(text, voice_config, output_path):
             text=text,
             lang=voice_config['lang'],
             tld=voice_config.get('tld', 'com'),
-            slow=False
+            slow=voice_config.get('slow', False)
         )
         
         # Save to a temporary WAV-like file first
@@ -114,9 +214,25 @@ def text_to_speech_pyttsx3(text, voice_config, output_path):
         
         engine = pyttsx3.init()
         
-        # Configure voice if specified
-        if voice_config.get('voice_id'):
-            voices = engine.getProperty('voices')
+        # Configure voice based on type or ID
+        voices = engine.getProperty('voices')
+        
+        if voice_config.get('voice_type'):
+            # Select voice by gender preference
+            selected_voice = None
+            for voice in voices:
+                voice_name = voice.name.lower()
+                if voice_config['voice_type'] == 'male' and any(keyword in voice_name for keyword in ['male', 'david', 'mark', 'alex']):
+                    selected_voice = voice.id
+                    break
+                elif voice_config['voice_type'] == 'female' and any(keyword in voice_name for keyword in ['female', 'zira', 'hazel', 'samantha']):
+                    selected_voice = voice.id
+                    break
+            
+            if selected_voice:
+                engine.setProperty('voice', selected_voice)
+        elif voice_config.get('voice_id'):
+            # Configure voice by specific ID
             for voice in voices:
                 if voice_config['voice_id'] in voice.id:
                     engine.setProperty('voice', voice.id)

@@ -252,13 +252,34 @@
                             <div class="form-group">
                                 <label for="tts-voice"><strong>Voice:</strong></label>
                                 <select id="tts-voice" class="form-select">
-                                    <option value="google_en">Google English (Female)</option>
-                                    <option value="google_en_uk">Google English UK (Female)</option>
-                                    <option value="google_en_au">Google English Australia (Female)</option>
-                                    <option value="google_es">Google Spanish (Female)</option>
-                                    <option value="google_fr">Google French (Female)</option>
-                                    <option value="google_de">Google German (Female)</option>
-                                    <option value="system_default">System Default Voice</option>
+                                    <optgroup label="American English">
+                                        <option value="google_en_us_female">Google US English (Female)</option>
+                                        <option value="google_en_us_male">Google US English (Male)</option>
+                                        <option value="google_en_us_wavenet_a">US WaveNet A (Female)</option>
+                                        <option value="google_en_us_wavenet_b">US WaveNet B (Male)</option>
+                                        <option value="google_en_us_wavenet_c">US WaveNet C (Female)</option>
+                                        <option value="google_en_us_wavenet_d">US WaveNet D (Male)</option>
+                                        <option value="google_en_us_neural2_a">US Neural2 A (Female)</option>
+                                        <option value="google_en_us_neural2_c">US Neural2 C (Male)</option>
+                                    </optgroup>
+                                    <optgroup label="Other English">
+                                        <option value="google_en_uk">Google English UK (Female)</option>
+                                        <option value="google_en_au">Google English Australia (Female)</option>
+                                        <option value="google_en_ca">Google English Canada (Female)</option>
+                                    </optgroup>
+                                    <optgroup label="Other Languages">
+                                        <option value="google_es">Google Spanish (Female)</option>
+                                        <option value="google_es_male">Google Spanish (Male)</option>
+                                        <option value="google_fr">Google French (Female)</option>
+                                        <option value="google_fr_male">Google French (Male)</option>
+                                        <option value="google_de">Google German (Female)</option>
+                                        <option value="google_de_male">Google German (Male)</option>
+                                    </optgroup>
+                                    <optgroup label="System Voices">
+                                        <option value="system_default">System Default Voice</option>
+                                        <option value="system_male">System Male Voice</option>
+                                        <option value="system_female">System Female Voice</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
