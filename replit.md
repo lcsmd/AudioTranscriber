@@ -13,15 +13,17 @@ A comprehensive speech and document processing web application that supports:
 
 ## Architecture
 - Flask web application with PostgreSQL database
-- Integration with faster-whisper service at 10.0.10.1
+- Integration with faster-whisper service at 10.1.10.20 (GPU server)
+- HAProxy SSL termination routing speech.lcs.ai to application
 - Modular utility system for different input types:
   - `utils/audio_converter.py` - Audio format conversion
   - `utils/youtube_processor.py` - YouTube content downloading
   - `utils/document_processor.py` - Document text extraction
-  - `utils/text_to_speech.py` - Speech synthesis
+  - `utils/text_to_speech.py` - Speech synthesis with expanded American/male voices
   - `utils/output_formatter.py` - Multi-format output generation
 - Asynchronous job processing with progress tracking
 - Comprehensive API endpoints for all processing types
+- GPU-accelerated transcription with Ollama integration
 
 ## User Preferences
 - Target URL: https://speech.lcs.ai
@@ -40,6 +42,9 @@ A comprehensive speech and document processing web application that supports:
 - 2025-06-17: Added multi-format output generation
 - 2025-06-17: Created real-time progress tracking system
 - 2025-06-17: Built asynchronous job processing framework
+- 2025-06-17: Expanded voice options with 8 American English voices including male options
+- 2025-06-17: Updated whisper service to point to GPU server at 10.1.10.20
+- 2025-06-17: Created comprehensive deployment guide and scripts for GPU server
 
 ## Key Features Implemented
 - **Input Types**: Files, YouTube URLs, Text input, Documents

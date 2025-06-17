@@ -6,7 +6,7 @@ import json
 logger = logging.getLogger(__name__)
 
 # Whisper service configuration
-WHISPER_SERVICE_URL = "http://10.0.10.1/v1/audio/transcriptions"  # Adjust the endpoint as needed
+WHISPER_SERVICE_URL = "http://10.1.10.20/v1/audio/transcriptions"  # GPU server with faster-whisper
 
 def send_to_whisper(audio_file_path):
     """
