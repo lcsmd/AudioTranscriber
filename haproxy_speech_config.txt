@@ -1,0 +1,46 @@
+# Add this ACL line to your frontend https_in section (around line 44):
+    acl is_speech hdr(host) -i speech.lcs.ai
+
+# Add this use_backend line to your frontend https_in section (around line 55):
+    use_backend speech_backend if is_speech
+
+# Add this backend configuration to the BACKENDS section (around line 125):
+backend speech_backend
+    option http-server-close
+    option forwardfor
+    option httpchk GET /health
+    http-request set-header X-Forwarded-Proto https
+    timeout server 300000ms  # 5 minutes for large file processing
+    server speech 10.1.10.20:5000 check inter 10s rise 2 fall 3
+
+# Complete updated frontend https_in section should look like:
+frontend https_in
+    bind *:443 ssl crt /etc/haproxy/certs/wildcard.pem ciphers HIGH:!aNULL:!MD5
+    mode http
+    log global
+    option forwardfor
+    option http-server-close
+    http-request set-header X-Forwarded-Proto https
+    http-request add-header X-Real-IP %[src]
+
+    acl is_n8n hdr(host) -i n8n.lcs.ai
+    acl is_nextcloud hdr(host) -i next.lcs.ai nextcloud.lcs.ai
+    acl is_chat hdr(host) -i chat.lcs.ai
+    acl is_hal hdr(host) -i hal.lcs.ai
+    acl is_webmin hdr(host) -i webmin.lcs.ai
+    acl is_nas hdr(host) -i nas.lcs.ai
+    acl is_dash hdr(host) -i dash.lcs.ai
+    acl is_ollama hdr(host) -i ollama.lcs.ai
+    acl is_speech hdr(host) -i speech.lcs.ai
+
+    use_backend nextcloud_backend if is_nextcloud
+    use_backend webmin_backend if is_webmin
+    use_backend n8n_backend if is_n8n
+    use_backend nas_backend if is_nas
+    use_backend dash_backend if is_dash
+    use_backend hal_backend if is_hal
+    use_backend chat_backend if is_chat
+    use_backend ollama_backend if is_ollama
+    use_backend speech_backend if is_speech
+
+    default_backend fallback_backend
