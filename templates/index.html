@@ -390,13 +390,29 @@
                         
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label><strong>Display Options:</strong></label>
+                                <label><strong>Processing Options:</strong></label>
                                 <div class="checkbox-group">
                                     <div class="checkbox-item">
                                         <input type="checkbox" id="live-text-display" value="live_display" checked>
                                         <label for="live-text-display">Display Text Live</label>
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <!-- YouTube-specific options -->
+                            <div id="youtube-transcript-options" class="form-group d-none">
+                                <label><strong>YouTube Processing:</strong></label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="pull-transcript" value="pull_transcript" checked>
+                                        <label for="pull-transcript">Pull Existing Transcript</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="transcribe-audio" value="transcribe_audio">
+                                        <label for="transcribe-audio">Transcribe from Audio</label>
+                                    </div>
+                                </div>
+                                <small class="text-muted">If transcript unavailable, will automatically transcribe audio</small>
                             </div>
                         </div>
                     </div>

@@ -48,15 +48,28 @@ function initializeTabs() {
 function updateConfigurationOptions(inputType) {
     const ttsOptions = document.getElementById('tts-options');
     const transcriptionOptions = document.getElementById('transcription-options');
+    const youtubeTranscriptOptions = document.getElementById('youtube-transcript-options');
     
     if (inputType === 'text' || inputType === 'document') {
         // Show TTS options for text and document inputs
         ttsOptions.classList.remove('d-none');
         transcriptionOptions.classList.add('d-none');
+        if (youtubeTranscriptOptions) {
+            youtubeTranscriptOptions.classList.add('d-none');
+        }
     } else {
         // Show transcription options for file, youtube inputs
         ttsOptions.classList.add('d-none');
         transcriptionOptions.classList.remove('d-none');
+        
+        // Show YouTube-specific options only for YouTube input
+        if (youtubeTranscriptOptions) {
+            if (inputType === 'youtube') {
+                youtubeTranscriptOptions.classList.remove('d-none');
+            } else {
+                youtubeTranscriptOptions.classList.add('d-none');
+            }
+        }
     }
 }
 
@@ -414,11 +427,20 @@ function getProcessingConfig() {
         const formatCheckboxes = document.querySelectorAll('input[type="checkbox"][id^="format-"]:checked');
         const formats = Array.from(formatCheckboxes).map(cb => cb.value);
         
+        // YouTube-specific options
+        const youtubeOptions = {};
+        const youtubeTranscriptOptions = document.getElementById('youtube-transcript-options');
+        if (youtubeTranscriptOptions && !youtubeTranscriptOptions.classList.contains('d-none')) {
+            youtubeOptions.pullTranscript = document.getElementById('pull-transcript').checked;
+            youtubeOptions.transcribeAudio = document.getElementById('transcribe-audio').checked;
+        }
+        
         return {
             language: language,
             voice: 'google_en', // Default voice for transcription
             formats: formats.length > 0 ? formats : ['text'],
-            liveDisplay: liveDisplay
+            liveDisplay: liveDisplay,
+            youtubeOptions: youtubeOptions
         };
     }
 }

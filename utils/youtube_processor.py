@@ -3,6 +3,8 @@ import tempfile
 import logging
 from yt_dlp import YoutubeDL
 import re
+from youtube_transcript_api._api import YouTubeTranscriptApi
+from urllib.parse import urlparse, parse_qs
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,88 @@ def is_youtube_playlist(url):
     """Check if the URL is a YouTube playlist"""
     playlist_pattern = r'(?:https?://)?(?:www\.)?youtube\.com/playlist\?list=([a-zA-Z0-9_-]+)'
     return bool(re.match(playlist_pattern, url.strip()))
+
+def extract_video_id(url):
+    """Extract video ID from YouTube URL"""
+    patterns = [
+        r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]+)',
+        r'(?:https?://)?(?:www\.)?youtu\.be/([a-zA-Z0-9_-]+)',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url.strip())
+        if match:
+            return match.group(1)
+    return None
+
+def get_youtube_transcript(url, language_codes=['en', 'en-US', 'en-GB']):
+    """
+    Extract transcript from YouTube video
+    
+    Args:
+        url (str): YouTube URL
+        language_codes (list): Preferred language codes in order of preference
+    
+    Returns:
+        dict: Transcript data with success status and content
+    """
+    try:
+        video_id = extract_video_id(url)
+        if not video_id:
+            return {'success': False, 'error': 'Invalid YouTube URL'}
+        
+        logger.info(f"Extracting transcript for video ID: {video_id}")
+        
+        # Try to get transcript in preferred languages
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        transcript = None
+        for lang_code in language_codes:
+            try:
+                transcript = transcript_list.find_transcript([lang_code])
+                break
+            except:
+                continue
+        
+        # If no transcript in preferred languages, try auto-generated English
+        if not transcript:
+            try:
+                transcript = transcript_list.find_generated_transcript(['en'])
+            except:
+                pass
+        
+        # If still no transcript, try any available transcript
+        if not transcript:
+            try:
+                available_transcripts = list(transcript_list)
+                if available_transcripts:
+                    transcript = available_transcripts[0]
+            except:
+                pass
+        
+        if not transcript:
+            return {'success': False, 'error': 'No transcript available for this video'}
+        
+        # Fetch the transcript
+        transcript_data = transcript.fetch()
+        
+        # Combine all text segments
+        full_text = ' '.join([entry['text'] for entry in transcript_data])
+        
+        # Clean up the text
+        full_text = full_text.replace('\n', ' ').strip()
+        
+        return {
+            'success': True,
+            'text': full_text,
+            'language': transcript.language_code,
+            'is_generated': transcript.is_generated,
+            'video_id': video_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error extracting transcript: {str(e)}")
+        return {'success': False, 'error': str(e)}
 
 def download_youtube_audio(url, output_dir=None):
     """
