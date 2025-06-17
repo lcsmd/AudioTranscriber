@@ -6,7 +6,8 @@ import json
 logger = logging.getLogger(__name__)
 
 # Whisper service configuration
-WHISPER_SERVICE_URL = "http://10.1.10.20/v1/audio/transcriptions"  # GPU server with faster-whisper
+# faster-whisper running from ~/projects/faster-whisper-gpu/ on 10.1.10.20
+WHISPER_SERVICE_URL = "http://10.1.10.20:8000/v1/audio/transcriptions"  # Default faster-whisper server port
 
 def send_to_whisper(audio_file_path):
     """

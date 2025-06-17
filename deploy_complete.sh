@@ -37,6 +37,87 @@ copy_to_gpu
 echo "2. Installing Python dependencies on GPU server..."
 run_on_gpu "cd $APP_DIR && pip3 install flask flask-sqlalchemy psycopg2-binary gtts pyttsx3 moviepy opencv-python yt-dlp pypdf2 python-docx reportlab markdown trafilatura requests gunicorn email-validator werkzeug"
 
+echo "2a. Setting up faster-whisper service..."
+run_on_gpu "cd ~/projects/faster-whisper-gpu && pip3 install faster-whisper flask"
+
+# Create whisper server if it doesn't exist
+run_on_gpu "if [ ! -f ~/projects/faster-whisper-gpu/whisper_server.py ]; then
+cat > ~/projects/faster-whisper-gpu/whisper_server.py << 'EOF'
+#!/usr/bin/env python3
+import os
+import tempfile
+import json
+from flask import Flask, request, jsonify
+from faster_whisper import WhisperModel
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+model = WhisperModel(\"large-v3\", device=\"cuda\", compute_type=\"float16\")
+
+@app.route('/v1/audio/transcriptions', methods=['POST'])
+def transcribe():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        audio_file = request.files['file']
+        if audio_file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_file:
+            audio_file.save(temp_file.name)
+            logger.info(f\"Processing audio file: {audio_file.filename}\")
+            
+            segments, info = model.transcribe(temp_file.name, beam_size=5)
+            transcription_text = \"\".join(segment.text + \" \" for segment in segments)
+            os.unlink(temp_file.name)
+            
+            result = {
+                \"text\": transcription_text.strip(),
+                \"language\": info.language,
+                \"duration\": info.duration,
+                \"language_probability\": info.language_probability
+            }
+            
+            logger.info(f\"Transcription completed: {len(transcription_text)} characters\")
+            return jsonify(result)
+            
+    except Exception as e:
+        logger.error(f\"Transcription error: {str(e)}\")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok', 'model': 'large-v3', 'device': 'cuda'})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000)
+EOF
+chmod +x ~/projects/faster-whisper-gpu/whisper_server.py
+fi"
+
+# Create systemd service for faster-whisper
+run_on_gpu "cat > /etc/systemd/system/faster-whisper.service << 'EOF'
+[Unit]
+Description=Faster Whisper GPU Service
+After=network.target
+
+[Service]
+Type=exec
+User=root
+WorkingDirectory=/root/projects/faster-whisper-gpu
+Environment=CUDA_VISIBLE_DEVICES=0
+ExecStart=/usr/bin/python3 whisper_server.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF"
+
 echo "3. Setting up environment file on GPU server..."
 run_on_gpu "cat > $APP_DIR/.env << 'EOF'
 DATABASE_URL=postgresql://speech_user:speech_password@localhost/speech_processing
@@ -74,20 +155,34 @@ echo "6. Setting permissions on GPU server..."
 run_on_gpu "chown -R www-data:www-data $APP_DIR"
 run_on_gpu "chmod +x $APP_DIR/main.py"
 
-echo "7. Starting the service on GPU server..."
+echo "7. Starting services on GPU server..."
 run_on_gpu "systemctl daemon-reload"
+run_on_gpu "systemctl enable faster-whisper"
+run_on_gpu "systemctl restart faster-whisper"
 run_on_gpu "systemctl enable $SERVICE_NAME"
 run_on_gpu "systemctl restart $SERVICE_NAME"
 
 echo "8. Checking service status on GPU server..."
 run_on_gpu "systemctl status $SERVICE_NAME --no-pager"
 
-echo "9. Testing application health on GPU server..."
+echo "8a. Testing faster-whisper service..."
 sleep 5
+if run_on_gpu "curl -f http://localhost:8000/health"; then
+    echo "✓ Faster-whisper service is running successfully!"
+else
+    echo "✗ Faster-whisper service health check failed"
+    echo "Checking faster-whisper logs:"
+    run_on_gpu "journalctl -u faster-whisper --no-pager -n 20"
+fi
+
+echo "9. Testing application health on GPU server..."
+sleep 3
 if run_on_gpu "curl -f http://localhost:5000/health"; then
     echo "✓ Application is running successfully on GPU server!"
 else
     echo "✗ Application health check failed on GPU server"
+    echo "Checking application logs:"
+    run_on_gpu "journalctl -u $SERVICE_NAME --no-pager -n 20"
     exit 1
 fi
 
