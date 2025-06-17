@@ -1,9 +1,10 @@
 # Faster-Whisper GPU Setup Guide
 
 ## Current Setup
-- Location: ~/projects/faster-whisper-gpu/ on 10.1.10.20
+- Location: /mnt/bigdisk/projects/faster-whisper-gpu/ on 10.1.10.20
+- Script: smart_transcribe.py (custom YouTube transcription tool)
 - GPU server with CUDA support
-- Integration with speech processing service
+- Integration with speech processing service via SSH
 
 ## Faster-Whisper Service Configuration
 

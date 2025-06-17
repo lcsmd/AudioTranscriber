@@ -45,6 +45,8 @@ A comprehensive speech and document processing web application that supports:
 - 2025-06-17: Expanded voice options with 8 American English voices including male options
 - 2025-06-17: Updated whisper service to point to GPU server at 10.1.10.20
 - 2025-06-17: Created comprehensive deployment guide and scripts for GPU server
+- 2025-06-17: Updated faster-whisper integration to use direct script at /mnt/bigdisk/projects/faster-whisper-gpu/smart_transcribe.py
+- 2025-06-17: Enhanced read-aloud functionality to use selected voice from dropdown with proper browser voice mapping
 
 ## Key Features Implemented
 - **Input Types**: Files, YouTube URLs, Text input, Documents
