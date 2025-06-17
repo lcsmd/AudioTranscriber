@@ -66,9 +66,9 @@
         <div class="card shadow">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1 class="card-title">Transcription History</h1>
+                    <h1 class="card-title">Processing History</h1>
                     <a href="/" class="btn btn-primary">
-                        <i class="fas fa-microphone-alt"></i> New Transcription
+                        <i class="fas fa-microphone-alt"></i> New Processing
                     </a>
                 </div>
                 
@@ -79,29 +79,85 @@
                                 <div class="card-body">
                                     <div class="file-info">
                                         <div class="file-icon">
-                                            <i class="fas fa-file-audio"></i>
+                                            {% if item.job_type == 'transcription' %}
+                                                <i class="fas fa-file-audio"></i>
+                                            {% elif item.job_type == 'tts' %}
+                                                <i class="fas fa-volume-up"></i>
+                                            {% elif item.job_type == 'document_processing' %}
+                                                <i class="fas fa-file-alt"></i>
+                                            {% else %}
+                                                <i class="fas fa-cog"></i>
+                                            {% endif %}
                                         </div>
                                         <div class="file-details">
-                                            <h5 class="file-name">{{ item.original_filename }}</h5>
+                                            <h5 class="file-name">
+                                                {% if item.original_filename %}
+                                                    {{ item.original_filename }}
+                                                {% elif item.source_url %}
+                                                    YouTube: {{ item.source_url[:50] }}...
+                                                {% elif item.input_text %}
+                                                    Text: {{ item.input_text[:50] }}...
+                                                {% else %}
+                                                    {{ item.job_type|title }} Job
+                                                {% endif %}
+                                            </h5>
                                             <div class="file-meta">
-                                                <span class="file-type badge bg-secondary">{{ item.file_type }}</span>
-                                                <span class="file-size">{{ (item.file_size / 1024)|round|int }} KB</span>
-                                                <span class="file-date">{{ item.created_at }}</span>
+                                                <span class="job-type badge bg-primary">{{ item.job_type|title }}</span>
+                                                <span class="input-type badge bg-secondary">{{ item.input_type|title }}</span>
+                                                {% if item.status == 'completed' %}
+                                                    <span class="status badge bg-success">{{ item.status|title }}</span>
+                                                {% elif item.status == 'failed' %}
+                                                    <span class="status badge bg-danger">{{ item.status|title }}</span>
+                                                {% elif item.status == 'processing' %}
+                                                    <span class="status badge bg-warning">{{ item.status|title }}</span>
+                                                {% else %}
+                                                    <span class="status badge bg-info">{{ item.status|title }}</span>
+                                                {% endif %}
+                                                {% if item.file_size %}
+                                                    <span class="file-size">{{ (item.file_size / 1024)|round|int }} KB</span>
+                                                {% endif %}
+                                                <span class="file-date">{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
                                                 {% if item.processing_time %}
-                                                    <span class="processing-time">Processed in {{ (item.processing_time / 1000)|round(1) }} seconds</span>
+                                                    <span class="processing-time">{{ (item.processing_time / 1000)|round(1) }}s</span>
                                                 {% endif %}
                                             </div>
                                         </div>
+                                        {% if item.result_text and item.status == 'completed' %}
                                         <div class="action-buttons">
                                             <button class="btn btn-sm btn-outline-primary copy-btn" data-transcription="{{ item.id }}">
                                                 <i class="fas fa-copy"></i> Copy
                                             </button>
                                         </div>
+                                        {% endif %}
                                     </div>
                                     
+                                    {% if item.result_text and item.status == 'completed' %}
                                     <div class="transcription-content" id="transcription-{{ item.id }}">
-                                        {{ item.transcription_text }}
+                                        {{ item.result_text }}
                                     </div>
+                                    {% elif item.error_message and item.status == 'failed' %}
+                                    <div class="transcription-content bg-danger-subtle text-danger" id="transcription-{{ item.id }}">
+                                        <strong>Error:</strong> {{ item.error_message }}
+                                    </div>
+                                    {% elif item.status == 'processing' %}
+                                    <div class="transcription-content bg-warning-subtle text-warning">
+                                        <i class="fas fa-spinner fa-spin"></i> Processing...
+                                        {% if item.progress_percentage > 0 %}
+                                            ({{ item.progress_percentage }}%)
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if item.result_files %}
+                                    <div class="mt-2">
+                                        <strong>Generated Files:</strong>
+                                        {% for file in item.result_files %}
+                                        <a href="/download/{{ file }}" class="btn btn-sm btn-outline-success me-1 mt-1">
+                                            <i class="fas fa-download"></i> {{ file.split('.')[-1]|upper }}
+                                        </a>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endfor %}

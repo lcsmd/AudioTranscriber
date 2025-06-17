@@ -177,24 +177,24 @@ def upload_file():
 
 @app.route('/history', methods=['GET'])
 def transcription_history():
-    # Get all completed transcriptions, ordered by most recent first
-    transcriptions = Transcription.query.filter_by(status='completed').order_by(Transcription.created_at.desc()).all()
+    # Get all processing jobs, ordered by most recent first
+    jobs = ProcessingJob.query.order_by(ProcessingJob.created_at.desc()).all()
     
     # Convert to a list of dictionaries for the template
-    history = [t.to_dict() for t in transcriptions]
+    history = [job.to_dict() for job in jobs]
     
     # Render the history template
     return render_template('history.html', history=history)
 
 @app.route('/api/history', methods=['GET'])
 def api_transcription_history():
-    # Get all transcriptions, ordered by most recent first
-    transcriptions = Transcription.query.order_by(Transcription.created_at.desc()).all()
+    # Get all processing jobs, ordered by most recent first
+    jobs = ProcessingJob.query.order_by(ProcessingJob.created_at.desc()).all()
     
     # Convert to a list of dictionaries for JSON
-    history = [t.to_dict() for t in transcriptions]
+    history = [job.to_dict() for job in jobs]
     
-    return jsonify({'transcriptions': history})
+    return jsonify({'jobs': history})
 
 @app.route('/api/process', methods=['POST'])
 def api_process():
