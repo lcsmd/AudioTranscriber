@@ -92,18 +92,59 @@ def _process_with_gpu_server(audio_file_path, language='en'):
         raise Exception(f"Invalid response from GPU server: {str(e)}")
 
 def _process_locally(audio_file_path, language='en'):
-    """Process audio file using local fallback (basic transcription)"""
-    logger.info(f"Processing file {audio_file_path} with local fallback")
+    """Process audio file using local faster-whisper"""
+    logger.info(f"Processing file {audio_file_path} with local faster-whisper")
     
-    # For now, return a basic mock transcription to prevent complete failure
-    # In a production environment, you would integrate with a local whisper installation
-    file_size = os.path.getsize(audio_file_path)
-    duration = max(1, file_size // 100000)  # Rough estimate based on file size
-    
-    return {
-        "text": "Local transcription processing is not available. Please configure faster-whisper or provide GPU server access for full transcription capabilities.",
-        "segments": [],
-        "language": language,
-        "duration": duration,
-        "processing_time": 1.0
-    }
+    try:
+        from faster_whisper import WhisperModel
+        
+        # Initialize the model (using 'base' for better performance/accuracy balance)
+        model = WhisperModel("base", device="cpu", compute_type="int8")
+        
+        # Convert language code if needed
+        whisper_language = language if language != 'auto' else None
+        
+        start_time = time.time()
+        segments, info = model.transcribe(
+            audio_file_path, 
+            language=whisper_language,
+            task="transcribe"
+        )
+        
+        # Extract text and segments
+        transcription_text = ""
+        segment_list = []
+        
+        for segment in segments:
+            transcription_text += segment.text + " "
+            segment_list.append({
+                "start": segment.start,
+                "end": segment.end,
+                "text": segment.text
+            })
+        
+        processing_time = time.time() - start_time
+        
+        result = {
+            "text": transcription_text.strip(),
+            "segments": segment_list,
+            "language": info.language,
+            "duration": info.duration,
+            "processing_time": processing_time
+        }
+        
+        logger.info(f"Local transcription completed in {processing_time:.2f} seconds")
+        return result
+        
+    except ImportError as e:
+        logger.error(f"faster-whisper not available: {str(e)}")
+        return {
+            "text": "Local transcription requires faster-whisper installation. Please install faster-whisper or configure GPU server access.",
+            "segments": [],
+            "language": language,
+            "duration": 0,
+            "processing_time": 0.0
+        }
+    except Exception as e:
+        logger.error(f"Error in local transcription: {str(e)}")
+        raise Exception(f"Local transcription failed: {str(e)}")
