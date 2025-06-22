@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 # Faster-whisper script configuration
 WHISPER_SCRIPT_PATH = "/mnt/bigdisk/projects/faster-whisper-gpu/smart_transcribe.py"
 WHISPER_SERVER = "10.1.10.20"
+WHISPER_USERNAME = "lawr"
+WHISPER_PASSWORD = "apgar-66"
 
 def send_to_whisper(audio_file_path, language='en'):
     """
@@ -33,9 +35,11 @@ def send_to_whisper(audio_file_path, language='en'):
     ssh_available = False
     try:
         subprocess.run(["which", "ssh"], check=True, capture_output=True)
+        subprocess.run(["which", "sshpass"], check=True, capture_output=True)
         ssh_available = True
+        logger.info("SSH tools available, attempting GPU server connection")
     except (subprocess.CalledProcessError, FileNotFoundError):
-        logger.info("SSH not available, using local processing")
+        logger.info("SSH tools not available, using local processing")
     
     if ssh_available:
         try:
@@ -59,19 +63,25 @@ def _process_with_gpu_server(audio_file_path, language='en'):
     # Copy file to GPU server
     logger.debug(f"Copying audio file to GPU server: {remote_audio_path}")
     subprocess.run([
-        "ssh", f"root@{WHISPER_SERVER}",
+        "sshpass", "-p", WHISPER_PASSWORD,
+        "ssh", "-o", "StrictHostKeyChecking=no",
+        f"{WHISPER_USERNAME}@{WHISPER_SERVER}",
         f"mkdir -p {remote_temp_dir}"
     ], check=True, capture_output=True)
     
     subprocess.run([
-        "scp", audio_file_path, f"root@{WHISPER_SERVER}:{remote_audio_path}"
+        "sshpass", "-p", WHISPER_PASSWORD,
+        "scp", "-o", "StrictHostKeyChecking=no",
+        audio_file_path, f"{WHISPER_USERNAME}@{WHISPER_SERVER}:{remote_audio_path}"
     ], check=True, capture_output=True)
     
     # Run transcription on GPU server
     logger.debug("Running transcription on GPU server")
     result = subprocess.run([
-        "ssh", f"root@{WHISPER_SERVER}",
-        f"cd /mnt/bigdisk/projects/faster-whisper-gpu && python3 smart_transcribe.py '{remote_audio_path}' --language {language}"
+        "sshpass", "-p", WHISPER_PASSWORD,
+        "ssh", "-o", "StrictHostKeyChecking=no",
+        f"{WHISPER_USERNAME}@{WHISPER_SERVER}",
+        f"cd {WHISPER_SCRIPT_PATH.rsplit('/', 1)[0]} && python3 {WHISPER_SCRIPT_PATH.rsplit('/', 1)[1]} '{remote_audio_path}' --language {language}"
     ], check=True, capture_output=True, text=True)
     
     # Parse the result
@@ -81,7 +91,9 @@ def _process_with_gpu_server(audio_file_path, language='en'):
         
         # Clean up remote files
         subprocess.run([
-            "ssh", f"root@{WHISPER_SERVER}",
+            "sshpass", "-p", WHISPER_PASSWORD,
+            "ssh", "-o", "StrictHostKeyChecking=no",
+            f"{WHISPER_USERNAME}@{WHISPER_SERVER}",
             f"rm -rf {remote_temp_dir}"
         ], capture_output=True)
         
