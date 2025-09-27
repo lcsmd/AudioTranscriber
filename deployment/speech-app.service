@@ -1,0 +1,29 @@
+[Unit]
+Description=Speech Processing Application
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/speech-app
+Environment="PATH=/var/www/speech-app/venv/bin"
+EnvironmentFile=/var/www/speech-app/.env
+ExecStart=/var/www/speech-app/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --timeout 300 --max-requests 1000 --max-requests-jitter 100 --preload --access-logfile /var/log/speech-app/access.log --error-logfile /var/log/speech-app/error.log --log-level info main:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/speech-app/uploads /var/log/speech-app
+
+[Install]
+WantedBy=multi-user.target
