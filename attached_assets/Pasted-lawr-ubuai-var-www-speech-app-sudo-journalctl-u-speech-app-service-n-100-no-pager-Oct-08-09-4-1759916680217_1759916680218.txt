@@ -1,0 +1,102 @@
+lawr@ubuai:/var/www/speech-app$ sudo journalctl -u speech-app.service -n 100 --no-pager
+Oct 08 09:44:03 ubuai gunicorn[49983]: ModuleNotFoundError: No module named 'yt_dlp'
+Oct 08 09:44:04 ubuai systemd[1]: speech-app.service: Main process exited, code=exited, status=1/FAILURE
+Oct 08 09:44:04 ubuai systemd[1]: speech-app.service: Failed with result 'exit-code'.
+Oct 08 09:44:04 ubuai systemd[1]: Failed to start speech-app.service - Speech Processing Application.
+Oct 08 09:44:09 ubuai systemd[1]: speech-app.service: Scheduled restart job, restart counter is at 19.
+Oct 08 09:44:09 ubuai systemd[1]: Starting speech-app.service - Speech Processing Application...
+Oct 08 09:44:09 ubuai gunicorn[49986]: Traceback (most recent call last):
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/bin/gunicorn", line 8, in <module>
+Oct 08 09:44:09 ubuai gunicorn[49986]:     sys.exit(run())
+Oct 08 09:44:09 ubuai gunicorn[49986]:              ^^^^^
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 66, in run
+Oct 08 09:44:09 ubuai gunicorn[49986]:     WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]", prog=prog).run()
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/base.py", line 235, in run
+Oct 08 09:44:09 ubuai gunicorn[49986]:     super().run()
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/base.py", line 71, in run
+Oct 08 09:44:09 ubuai gunicorn[49986]:     Arbiter(self).run()
+Oct 08 09:44:09 ubuai gunicorn[49986]:     ^^^^^^^^^^^^^
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/arbiter.py", line 57, in __init__
+Oct 08 09:44:09 ubuai gunicorn[49986]:     self.setup(app)
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/arbiter.py", line 117, in setup
+Oct 08 09:44:09 ubuai gunicorn[49986]:     self.app.wsgi()
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/base.py", line 66, in wsgi
+Oct 08 09:44:09 ubuai gunicorn[49986]:     self.callable = self.load()
+Oct 08 09:44:09 ubuai gunicorn[49986]:                     ^^^^^^^^^^^
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 57, in load
+Oct 08 09:44:09 ubuai gunicorn[49986]:     return self.load_wsgiapp()
+Oct 08 09:44:09 ubuai gunicorn[49986]:            ^^^^^^^^^^^^^^^^^^^
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 47, in load_wsgiapp
+Oct 08 09:44:09 ubuai gunicorn[49986]:     return util.import_app(self.app_uri)
+Oct 08 09:44:09 ubuai gunicorn[49986]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/util.py", line 370, in import_app
+Oct 08 09:44:09 ubuai gunicorn[49986]:     mod = importlib.import_module(module)
+Oct 08 09:44:09 ubuai gunicorn[49986]:           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+Oct 08 09:44:09 ubuai gunicorn[49986]:     return _bootstrap._gcd_import(name[level:], package, level)
+Oct 08 09:44:09 ubuai gunicorn[49986]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/main.py", line 2, in <module>
+Oct 08 09:44:09 ubuai gunicorn[49986]:     from app import app
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/app.py", line 11, in <module>
+Oct 08 09:44:09 ubuai gunicorn[49986]:     from utils.youtube_processor import is_youtube_url, download_youtube_audio, get_youtube_info, get_youtube_transcript
+Oct 08 09:44:09 ubuai gunicorn[49986]:   File "/var/www/speech-app/utils/youtube_processor.py", line 4, in <module>
+Oct 08 09:44:09 ubuai gunicorn[49986]:     from yt_dlp import YoutubeDL
+Oct 08 09:44:09 ubuai gunicorn[49986]: ModuleNotFoundError: No module named 'yt_dlp'
+Oct 08 09:44:09 ubuai systemd[1]: speech-app.service: Main process exited, code=exited, status=1/FAILURE
+Oct 08 09:44:09 ubuai systemd[1]: speech-app.service: Failed with result 'exit-code'.
+Oct 08 09:44:09 ubuai systemd[1]: Failed to start speech-app.service - Speech Processing Application.
+Oct 08 09:44:14 ubuai systemd[1]: speech-app.service: Scheduled restart job, restart counter is at 20.
+Oct 08 09:44:14 ubuai systemd[1]: Starting speech-app.service - Speech Processing Application...
+Oct 08 09:44:14 ubuai gunicorn[49988]: Traceback (most recent call last):
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/bin/gunicorn", line 8, in <module>
+Oct 08 09:44:14 ubuai gunicorn[49988]:     sys.exit(run())
+Oct 08 09:44:14 ubuai gunicorn[49988]:              ^^^^^
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 66, in run
+Oct 08 09:44:14 ubuai gunicorn[49988]:     WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]", prog=prog).run()
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/base.py", line 235, in run
+Oct 08 09:44:14 ubuai gunicorn[49988]:     super().run()
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/base.py", line 71, in run
+Oct 08 09:44:14 ubuai gunicorn[49988]:     Arbiter(self).run()
+Oct 08 09:44:14 ubuai gunicorn[49988]:     ^^^^^^^^^^^^^
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/arbiter.py", line 57, in __init__
+Oct 08 09:44:14 ubuai gunicorn[49988]:     self.setup(app)
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/arbiter.py", line 117, in setup
+Oct 08 09:44:14 ubuai gunicorn[49988]:     self.app.wsgi()
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/base.py", line 66, in wsgi
+Oct 08 09:44:14 ubuai gunicorn[49988]:     self.callable = self.load()
+Oct 08 09:44:14 ubuai gunicorn[49988]:                     ^^^^^^^^^^^
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 57, in load
+Oct 08 09:44:14 ubuai gunicorn[49988]:     return self.load_wsgiapp()
+Oct 08 09:44:14 ubuai gunicorn[49988]:            ^^^^^^^^^^^^^^^^^^^
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 47, in load_wsgiapp
+Oct 08 09:44:14 ubuai gunicorn[49988]:     return util.import_app(self.app_uri)
+Oct 08 09:44:14 ubuai gunicorn[49988]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/util.py", line 370, in import_app
+Oct 08 09:44:14 ubuai gunicorn[49988]:     mod = importlib.import_module(module)
+Oct 08 09:44:14 ubuai gunicorn[49988]:           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+Oct 08 09:44:14 ubuai gunicorn[49988]:     return _bootstrap._gcd_import(name[level:], package, level)
+Oct 08 09:44:14 ubuai gunicorn[49988]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/main.py", line 2, in <module>
+Oct 08 09:44:14 ubuai gunicorn[49988]:     from app import app
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/app.py", line 11, in <module>
+Oct 08 09:44:14 ubuai gunicorn[49988]:     from utils.youtube_processor import is_youtube_url, download_youtube_audio, get_youtube_info, get_youtube_transcript
+Oct 08 09:44:14 ubuai gunicorn[49988]:   File "/var/www/speech-app/utils/youtube_processor.py", line 4, in <module>
+Oct 08 09:44:14 ubuai gunicorn[49988]:     from yt_dlp import YoutubeDL
+Oct 08 09:44:14 ubuai gunicorn[49988]: ModuleNotFoundError: No module named 'yt_dlp'
+Oct 08 09:44:14 ubuai systemd[1]: speech-app.service: Main process exited, code=exited, status=1/FAILURE
+Oct 08 09:44:14 ubuai systemd[1]: speech-app.service: Failed with result 'exit-code'.
+Oct 08 09:44:14 ubuai systemd[1]: Failed to start speech-app.service - Speech Processing Application.
+lawr@ubuai:/var/www/speech-app$
