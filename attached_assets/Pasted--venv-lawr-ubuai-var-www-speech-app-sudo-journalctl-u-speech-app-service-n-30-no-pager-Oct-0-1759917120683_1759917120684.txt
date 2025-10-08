@@ -1,0 +1,32 @@
+(venv) lawr@ubuai:/var/www/speech-app$ sudo journalctl -u speech-app.service -n 30 --no-pager
+Oct 08 09:51:44 ubuai gunicorn[50461]:                      ^
+Oct 08 09:51:44 ubuai gunicorn[50461]: [SQL:
+Oct 08 09:51:44 ubuai gunicorn[50461]: CREATE TABLE processing_jobs (
+Oct 08 09:51:44 ubuai gunicorn[50461]:         id SERIAL NOT NULL,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         job_type VARCHAR(50) NOT NULL,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         input_type VARCHAR(50) NOT NULL,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         original_filename VARCHAR(255),
+Oct 08 09:51:44 ubuai gunicorn[50461]:         source_url TEXT,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         input_text TEXT,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         file_type VARCHAR(10),
+Oct 08 09:51:44 ubuai gunicorn[50461]:         file_size INTEGER,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         target_language VARCHAR(10),
+Oct 08 09:51:44 ubuai gunicorn[50461]:         voice_id VARCHAR(50),
+Oct 08 09:51:44 ubuai gunicorn[50461]:         output_formats JSON,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         result_text TEXT,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         result_files JSON,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         processing_time INTEGER,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         progress_percentage INTEGER NOT NULL,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         status VARCHAR(20) NOT NULL,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         error_message TEXT,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         job_metadata JSON,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         created_at TIMESTAMP WITHOUT TIME ZONE,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         updated_at TIMESTAMP WITHOUT TIME ZONE,
+Oct 08 09:51:44 ubuai gunicorn[50461]:         PRIMARY KEY (id)
+Oct 08 09:51:44 ubuai gunicorn[50461]: )
+Oct 08 09:51:44 ubuai gunicorn[50461]: ]
+Oct 08 09:51:44 ubuai gunicorn[50461]: (Background on this error at: https://sqlalche.me/e/20/f405)
+Oct 08 09:51:44 ubuai systemd[1]: speech-app.service: Main process exited, code=exited, status=1/FAILURE
+Oct 08 09:51:44 ubuai systemd[1]: speech-app.service: Failed with result 'exit-code'.
+Oct 08 09:51:44 ubuai systemd[1]: Failed to start speech-app.service - Speech Processing Application.
+(venv) lawr@ubuai:/var/www/speech-app$
