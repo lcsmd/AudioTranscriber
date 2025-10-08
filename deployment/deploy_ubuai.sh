@@ -23,11 +23,18 @@ if [ -z "$REPO_URL" ]; then
 fi
 
 echo "Step 1: Creating application directory..."
+sudo mkdir -p /var/www
 sudo mkdir -p $APP_DIR
 sudo chown $CURRENT_USER:www-data $APP_DIR
 
 echo "Step 2: Cloning repository..."
-git clone $REPO_URL $APP_DIR
+if [ -d "$APP_DIR/.git" ]; then
+    echo "Repository already exists, pulling latest changes..."
+    cd $APP_DIR
+    git pull
+else
+    git clone $REPO_URL $APP_DIR
+fi
 
 cd $APP_DIR
 

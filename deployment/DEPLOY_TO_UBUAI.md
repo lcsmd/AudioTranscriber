@@ -16,13 +16,22 @@ ssh lawr@10.1.10.20
 
 ## Step 2: Clone Your Repository
 
+### Option A: Use /var/www (Traditional)
 ```bash
-# Navigate to your preferred location
-cd /var/www
+# Create directory if it doesn't exist
+sudo mkdir -p /var/www
 
 # Clone your repository
-sudo git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git speech-app
-sudo chown -R lawr:www-data speech-app
+sudo git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git /var/www/speech-app
+sudo chown -R lawr:www-data /var/www/speech-app
+cd /var/www/speech-app
+```
+
+### Option B: Use your home directory
+```bash
+# Clone to home directory
+cd ~
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git speech-app
 cd speech-app
 ```
 
