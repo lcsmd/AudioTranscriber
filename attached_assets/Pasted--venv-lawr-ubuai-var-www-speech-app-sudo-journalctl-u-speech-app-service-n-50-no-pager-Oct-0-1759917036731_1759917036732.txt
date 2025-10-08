@@ -1,0 +1,55 @@
+(venv) lawr@ubuai:/var/www/speech-app$ sudo journalctl -u speech-app.service -n 50 --no-pager
+Oct 08 09:50:16 ubuai gunicorn[50357]:            ^^^^^
+Oct 08 09:50:16 ubuai gunicorn[50357]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/sqlalchemy/sql/ddl.py", line 180, in _execute_on_connection
+Oct 08 09:50:16 ubuai gunicorn[50357]:     return connection._execute_ddl(
+Oct 08 09:50:16 ubuai gunicorn[50357]:            ^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:50:16 ubuai gunicorn[50357]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1529, in _execute_ddl
+Oct 08 09:50:16 ubuai gunicorn[50357]:     ret = self._execute_context(
+Oct 08 09:50:16 ubuai gunicorn[50357]:           ^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:50:16 ubuai gunicorn[50357]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+Oct 08 09:50:16 ubuai gunicorn[50357]:     return self._exec_single_context(
+Oct 08 09:50:16 ubuai gunicorn[50357]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 08 09:50:16 ubuai gunicorn[50357]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+Oct 08 09:50:16 ubuai gunicorn[50357]:     self._handle_dbapi_exception(
+Oct 08 09:50:16 ubuai gunicorn[50357]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2353, in _handle_dbapi_exception
+Oct 08 09:50:16 ubuai gunicorn[50357]:     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+Oct 08 09:50:16 ubuai gunicorn[50357]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+Oct 08 09:50:16 ubuai gunicorn[50357]:     self.dialect.do_execute(
+Oct 08 09:50:16 ubuai gunicorn[50357]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 924, in do_execute
+Oct 08 09:50:16 ubuai gunicorn[50357]:     cursor.execute(statement, parameters)
+Oct 08 09:50:16 ubuai gunicorn[50357]: sqlalchemy.exc.ProgrammingError: (psycopg2.errors.InsufficientPrivilege) permission denied for schema public
+Oct 08 09:50:16 ubuai gunicorn[50357]: LINE 2: CREATE TABLE processing_jobs (
+Oct 08 09:50:16 ubuai gunicorn[50357]:                      ^
+Oct 08 09:50:16 ubuai gunicorn[50357]: [SQL:
+Oct 08 09:50:16 ubuai gunicorn[50357]: CREATE TABLE processing_jobs (
+Oct 08 09:50:16 ubuai gunicorn[50357]:         id SERIAL NOT NULL,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         job_type VARCHAR(50) NOT NULL,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         input_type VARCHAR(50) NOT NULL,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         original_filename VARCHAR(255),
+Oct 08 09:50:16 ubuai gunicorn[50357]:         source_url TEXT,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         input_text TEXT,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         file_type VARCHAR(10),
+Oct 08 09:50:16 ubuai gunicorn[50357]:         file_size INTEGER,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         target_language VARCHAR(10),
+Oct 08 09:50:16 ubuai gunicorn[50357]:         voice_id VARCHAR(50),
+Oct 08 09:50:16 ubuai gunicorn[50357]:         output_formats JSON,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         result_text TEXT,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         result_files JSON,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         processing_time INTEGER,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         progress_percentage INTEGER NOT NULL,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         status VARCHAR(20) NOT NULL,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         error_message TEXT,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         job_metadata JSON,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         created_at TIMESTAMP WITHOUT TIME ZONE,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         updated_at TIMESTAMP WITHOUT TIME ZONE,
+Oct 08 09:50:16 ubuai gunicorn[50357]:         PRIMARY KEY (id)
+Oct 08 09:50:16 ubuai gunicorn[50357]: )
+Oct 08 09:50:16 ubuai gunicorn[50357]: ]
+Oct 08 09:50:16 ubuai gunicorn[50357]: (Background on this error at: https://sqlalche.me/e/20/f405)
+Oct 08 09:50:16 ubuai systemd[1]: speech-app.service: Main process exited, code=exited, status=1/FAILURE
+Oct 08 09:50:16 ubuai systemd[1]: speech-app.service: Failed with result 'exit-code'.
+Oct 08 09:50:16 ubuai systemd[1]: Failed to start speech-app.service - Speech Processing Application.
+(venv) lawr@ubuai:/var/www/speech-app$
+
+
+
