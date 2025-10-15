@@ -12,6 +12,8 @@ from utils.youtube_processor import is_youtube_url, download_youtube_audio, get_
 from utils.document_processor import process_document, get_document_info
 from utils.text_to_speech import convert_text_to_speech, get_available_voices
 from utils.output_formatter import generate_output_file, get_supported_formats
+from utils.llm_processor import process_text_with_llm, get_available_models
+from utils.openqm_client import save_transcript_to_openqm, export_to_json_for_openqm
 from models import db, Transcription, ProcessingJob
 
 # Configure logging
@@ -217,6 +219,14 @@ def api_process():
             if not files or not files[0].filename:
                 return jsonify({'error': 'No files provided'}), 400
             
+            # Extract LLM config from form data
+            llm_config_str = request.form.get('llm_config', '{}')
+            try:
+                import json
+                llm_config = json.loads(llm_config_str)
+            except:
+                llm_config = {}
+            
             # Create processing job
             job = ProcessingJob(
                 job_type='transcription' if input_type == 'audio-video' else 'document_processing',
@@ -224,6 +234,7 @@ def api_process():
                 target_language=target_language,
                 voice_id=voice_id,
                 output_formats=output_formats,
+                job_metadata={'llm': llm_config},
                 status='pending'
             )
             db.session.add(job)
@@ -272,8 +283,9 @@ def api_process():
                 if not source_url or not is_youtube_url(source_url):
                     return jsonify({'error': 'Invalid YouTube URL'}), 400
                 
-                # Extract YouTube processing options
+                # Extract YouTube processing options and LLM config
                 youtube_options = data.get('youtubeOptions', {})
+                llm_config = data.get('llm', {})
                 
                 job = ProcessingJob(
                     job_type='transcription',
@@ -282,7 +294,7 @@ def api_process():
                     target_language=target_language,
                     voice_id=voice_id,
                     output_formats=output_formats,
-                    job_metadata={'youtubeOptions': youtube_options},
+                    job_metadata={'youtubeOptions': youtube_options, 'llm': llm_config},
                     status='pending'
                 )
                 
@@ -510,6 +522,63 @@ def process_job_worker(job_id, file_paths=None):
                             all_text.append(f"Error processing document: {str(e)}")
                     
                     job.result_text = '\n\n'.join(all_text)
+            
+            # LLM Processing (if enabled)
+            llm_config = job.job_metadata.get('llm', {}) if job.job_metadata else {}
+            llm_result_text = None
+            
+            if llm_config.get('enabled') and job.result_text:
+                job.progress_percentage = 75
+                db.session.commit()
+                logger.info(f"Starting LLM processing with type: {llm_config.get('processingType')}")
+                
+                try:
+                    llm_result = process_text_with_llm(
+                        text=job.result_text,
+                        processing_type=llm_config.get('processingType', 'summarize'),
+                        custom_prompt=llm_config.get('customPrompt'),
+                        model=llm_config.get('model')
+                    )
+                    
+                    if llm_result.get('success'):
+                        llm_result_text = llm_result.get('processed_text')
+                        logger.info("LLM processing completed successfully")
+                        
+                        # Save to OpenQM if requested
+                        if llm_config.get('saveToOpenQM'):
+                            transcript_data = {
+                                'text': job.result_text,
+                                'source_type': job.input_type,
+                                'source_url': job.source_url,
+                                'language': job.target_language,
+                                'file_name': job.original_filename
+                            }
+                            save_result = save_transcript_to_openqm(transcript_data, llm_result)
+                            logger.info(f"OpenQM save result: {save_result.get('message', save_result.get('error'))}")
+                        
+                        # Export to Markdown if requested
+                        if llm_config.get('exportMarkdown'):
+                            markdown_content = f"# {job.original_filename or 'Transcript'}\n\n"
+                            markdown_content += f"**Processing Type:** {llm_config.get('processingType')}\n\n"
+                            markdown_content += f"## Original Transcript\n\n{job.result_text}\n\n"
+                            markdown_content += f"## AI Analysis\n\n{llm_result_text}\n"
+                            
+                            markdown_filename = f"transcript_{uuid.uuid4().hex[:8]}.md"
+                            markdown_path = os.path.join(app.config['UPLOAD_FOLDER'], markdown_filename)
+                            
+                            with open(markdown_path, 'w') as f:
+                                f.write(markdown_content)
+                            
+                            result_files.append(markdown_filename)
+                            logger.info(f"Markdown exported to {markdown_filename}")
+                        
+                        # Append LLM result to job result text for display
+                        job.result_text = f"{job.result_text}\n\n--- AI Analysis ({llm_config.get('processingType')}) ---\n\n{llm_result_text}"
+                    else:
+                        logger.error(f"LLM processing failed: {llm_result.get('error')}")
+                        
+                except Exception as e:
+                    logger.error(f"Error in LLM processing: {str(e)}")
             
             # Generate output files in requested formats
             job.progress_percentage = 80

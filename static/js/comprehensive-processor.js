@@ -223,6 +223,7 @@ async function processFiles(files, inputType) {
     formData.append('target_language', config.language);
     formData.append('output_formats', JSON.stringify(config.formats));
     formData.append('voice_id', config.voice);
+    formData.append('llm_config', JSON.stringify(config.llm));
     
     try {
         updateProgress(30, 'Uploading files...');
@@ -264,7 +265,8 @@ async function processYouTubeURL(url) {
         target_language: config.language,
         output_formats: config.formats,
         voice_id: config.voice,
-        youtubeOptions: config.youtubeOptions || {}
+        youtubeOptions: config.youtubeOptions || {},
+        llm: config.llm
     };
     
     try {
