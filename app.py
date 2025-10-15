@@ -75,6 +75,37 @@ def allowed_file(filename, file_type='all'):
 def index():
     return render_template('index.html')
 
+@app.route('/api/suggested-prompts')
+def get_suggested_prompts():
+    """Load suggested prompts from text file"""
+    try:
+        prompts = []
+        prompts_file = 'suggested_prompts.txt'
+        
+        if os.path.exists(prompts_file):
+            with open(prompts_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip empty lines and comments
+                    if line and not line.startswith('#'):
+                        prompts.append(line)
+        
+        # If no prompts file or empty, return default prompts
+        if not prompts:
+            prompts = [
+                "Summarize this text in 3-5 key points",
+                "Create a detailed summary with main themes and supporting details",
+                "Provide a critical analysis highlighting strengths, weaknesses, and areas for improvement",
+                "Expand on this content with additional context, examples, and detailed explanations",
+                "Explain this in simple, easy-to-understand language suitable for a general audience"
+            ]
+        
+        return jsonify({'prompts': prompts})
+    
+    except Exception as e:
+        logger.error(f"Error loading suggested prompts: {str(e)}")
+        return jsonify({'prompts': []})
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'audio_file' not in request.files:

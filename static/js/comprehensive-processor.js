@@ -174,7 +174,33 @@ function initializeResultHandling() {
     // Result handling will be setup during processing completion
 }
 
+async function loadSuggestedPrompts() {
+    try {
+        const response = await fetch('/api/suggested-prompts');
+        const data = await response.json();
+        
+        const suggestedPrompts = document.getElementById('suggested-prompts');
+        if (suggestedPrompts && data.prompts) {
+            // Clear existing options except the first one
+            suggestedPrompts.innerHTML = '<option value="">-- Select a suggested prompt --</option>';
+            
+            // Add prompts from the file
+            data.prompts.forEach((prompt, index) => {
+                const option = document.createElement('option');
+                option.value = `prompt_${index}`;
+                option.textContent = prompt;
+                suggestedPrompts.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading suggested prompts:', error);
+    }
+}
+
 function initializeLLMOptions() {
+    // Load suggested prompts from file
+    loadSuggestedPrompts();
+    
     // Handle LLM enable/disable
     const enableLLM = document.getElementById('enable-llm-processing');
     const llmSettings = document.getElementById('llm-settings');
