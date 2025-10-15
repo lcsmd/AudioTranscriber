@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize result handling
     initializeResultHandling();
+    
+    // Initialize LLM options
+    initializeLLMOptions();
 });
 
 function initializeTabs() {
@@ -169,6 +172,36 @@ function initializeProgressTracking() {
 
 function initializeResultHandling() {
     // Result handling will be setup during processing completion
+}
+
+function initializeLLMOptions() {
+    // Handle LLM enable/disable
+    const enableLLM = document.getElementById('enable-llm-processing');
+    const llmSettings = document.getElementById('llm-settings');
+    
+    if (enableLLM) {
+        enableLLM.addEventListener('change', function() {
+            if (this.checked) {
+                llmSettings.classList.remove('d-none');
+            } else {
+                llmSettings.classList.add('d-none');
+            }
+        });
+    }
+    
+    // Handle custom prompt visibility
+    const processingType = document.getElementById('llm-processing-type');
+    const customPromptContainer = document.getElementById('custom-prompt-container');
+    
+    if (processingType) {
+        processingType.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customPromptContainer.style.display = 'block';
+            } else {
+                customPromptContainer.style.display = 'none';
+            }
+        });
+    }
 }
 
 async function processFiles(files, inputType) {
@@ -413,12 +446,16 @@ function getProcessingConfig() {
         const readAloud = document.getElementById('read-aloud-now').checked;
         const createMp3 = document.getElementById('auto-create-mp3').checked;
         
+        // Get LLM processing options
+        const llmConfig = getLLMConfig();
+        
         return {
             language: language,
             voice: voice,
             formats: createMp3 ? ['mp3'] : [],
             readAloud: readAloud,
-            createMp3: createMp3
+            createMp3: createMp3,
+            llm: llmConfig
         };
     } else {
         // Transcription configuration (audio/video/youtube input)
@@ -436,14 +473,37 @@ function getProcessingConfig() {
             youtubeOptions.transcribeAudio = document.getElementById('transcribe-audio').checked;
         }
         
+        // Get LLM processing options
+        const llmConfig = getLLMConfig();
+        
         return {
             language: language,
             voice: 'google_en', // Default voice for transcription
             formats: formats.length > 0 ? formats : ['text'],
             liveDisplay: liveDisplay,
-            youtubeOptions: youtubeOptions
+            youtubeOptions: youtubeOptions,
+            llm: llmConfig
         };
     }
+}
+
+function getLLMConfig() {
+    const enableLLM = document.getElementById('enable-llm-processing');
+    
+    if (!enableLLM || !enableLLM.checked) {
+        return {
+            enabled: false
+        };
+    }
+    
+    return {
+        enabled: true,
+        processingType: document.getElementById('llm-processing-type').value,
+        model: document.getElementById('llm-model').value,
+        customPrompt: document.getElementById('custom-llm-prompt').value,
+        saveToOpenQM: document.getElementById('save-to-openqm').checked,
+        exportMarkdown: document.getElementById('export-markdown').checked
+    };
 }
 
 function showProgress() {

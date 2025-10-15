@@ -419,6 +419,74 @@
                 </div>
             </div>
             
+            <!-- LLM Processing Options -->
+            <div id="llm-options" class="config-section card mt-4">
+                <h4><i class="fas fa-brain"></i> AI Processing (Optional)</h4>
+                <div class="config-group">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="enable-llm-processing" value="enable_llm">
+                                    <label for="enable-llm-processing"><strong>Process text with AI (Ollama)</strong></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="llm-settings" class="row mt-3 d-none">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="llm-processing-type"><strong>Processing Type:</strong></label>
+                                <select id="llm-processing-type" class="form-select">
+                                    <option value="summarize">Summarize</option>
+                                    <option value="critique">Critique & Analyze</option>
+                                    <option value="expand">Expand with Details</option>
+                                    <option value="explain">Explain Simply</option>
+                                    <option value="custom">Custom Prompt</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="llm-model"><strong>AI Model:</strong></label>
+                                <select id="llm-model" class="form-select">
+                                    <option value="llama2">Llama 2</option>
+                                    <option value="llama3">Llama 3</option>
+                                    <option value="mistral">Mistral</option>
+                                    <option value="codellama">Code Llama</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label><strong>Save Options:</strong></label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="save-to-openqm" value="save_openqm">
+                                        <label for="save-to-openqm">Save to OpenQM Database</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="export-markdown" value="export_markdown">
+                                        <label for="export-markdown">Export as Markdown (Obsidian)</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-12 mt-3" id="custom-prompt-container" style="display:none;">
+                            <div class="form-group">
+                                <label for="custom-llm-prompt"><strong>Custom Prompt:</strong></label>
+                                <textarea id="custom-llm-prompt" class="form-control" rows="3" 
+                                          placeholder="Enter your custom prompt here..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Progress Section -->
             <div id="progress-section" class="progress-container d-none">
                 <h5><i class="fas fa-spinner fa-spin"></i> Processing...</h5>
