@@ -1,0 +1,25 @@
+# Suggested AI Prompts
+# Edit this file to customize the suggested prompts shown in the dropdown
+# Format: Each line is a separate prompt option
+# Lines starting with # are comments and will be ignored
+
+Summarize this text in 3-5 key points
+Create a detailed summary with main themes and supporting details
+Provide a critical analysis highlighting strengths, weaknesses, and areas for improvement
+Expand on this content with additional context, examples, and detailed explanations
+Explain this in simple, easy-to-understand language suitable for a general audience
+Extract all action items, tasks, and next steps from this text
+Generate thoughtful questions that this text raises or answers
+Identify and list the most important quotes and statements
+Provide a technical analysis with specific terminology and expert insights
+Create a concise executive summary for busy stakeholders
+Analyze the emotional tone and underlying sentiment of this content
+Identify the main arguments and supporting evidence presented
+Compare and contrast the different perspectives or viewpoints mentioned
+Extract key statistics, data points, and factual information
+Rewrite this content for a different audience (specify which audience)
+Identify potential biases, assumptions, or gaps in the argument
+Create a list of follow-up research topics or questions to explore
+Transform this into a structured outline with main points and sub-points
+Identify practical applications or real-world implications of this content
+Highlight any contradictions, inconsistencies, or areas of confusion
