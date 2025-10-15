@@ -1,0 +1,46 @@
+lawr@ubuai:~$ ls -la /var/www/speech-app/
+ls -la /var/www/speech-app/static/
+ls -la /var/www/speech-app/static/js/
+total 1468732
+drwxr-xr-x 11 lawr lawr       4096 Oct  8 10:44  .
+drwxr-xr-x  4 root root       4096 Oct  8 09:41  ..
+-rw-r--r--  1 lawr lawr      24027 Oct  8 09:36  app.py
+drwxr-xr-x  2 lawr lawr       4096 Oct  8 09:36  attached_assets
+-rw-r--r--  1 lawr lawr       6321 Oct  8 09:36  deploy_complete.sh
+drwxr-xr-x  2 lawr lawr       4096 Oct  8 09:36  deployment
+-rw-r--r--  1 lawr lawr       6474 Oct  8 09:36  DEPLOYMENT.md
+-rw-r--r--  1 lawr lawr       3107 Oct  8 09:36  deploy.sh
+-rw-rw-r--  1 lawr lawr        780 Oct  8 09:42  .env
+-rw-r--r--  1 lawr lawr       5968 Oct  8 09:36  FASTER_WHISPER_SETUP.md
+-rw-r--r--  1 lawr lawr     755150 Oct  8 09:36  generated-icon.png
+drwxr-xr-x  8 lawr lawr       4096 Oct  8 09:36  .git
+-rw-r--r--  1 lawr lawr       1758 Oct  8 09:36  haproxy_speech_config.txt
+-rw-r--r--  1 lawr lawr        176 Oct  8 09:36  main.py
+-rw-r--r--  1 lawr lawr       4519 Oct  8 09:36  models.py
+drwxr-xr-x  2 lawr lawr       4096 Oct  8 09:42  __pycache__
+-rw-r--r--  1 lawr lawr        707 Oct  8 09:36  pyproject.toml
+-rw-r--r--  1 lawr lawr       6032 Oct  8 09:36  README.md
+-rw-r--r--  1 lawr lawr        919 Oct  8 09:36  .replit
+-rw-r--r--  1 lawr lawr       3732 Oct  8 09:36  replit.md
+-rw-rw-r--  1 lawr lawr        407 Oct  8 09:48  requirements.txt
+drwxr-xr-x  4 lawr lawr       4096 Oct  8 09:36  static
+drwxr-xr-x  2 lawr lawr       4096 Oct  8 09:36  templates
+-rw-rw-r--  1 lawr lawr   11182172 Oct  8 10:44 'Tesla Full Self-Driving 14.1 First Drive! [Mzgej1VXqDA].f251-11.webm'
+-rw-rw-r--  1 lawr lawr 1050658803 Oct  8 10:44 'Tesla Full Self-Driving 14.1 First Drive! [Mzgej1VXqDA].f401.mp4'
+-rw-rw-r--  1 lawr lawr  440729600 Oct  8 10:44 'Tesla Full Self-Driving 14.1 First Drive! [Mzgej1VXqDA].temp.webm'
+drwxrwxr-x  2 lawr lawr       4096 Oct  8 09:42  uploads
+drwxr-xr-x  3 lawr lawr       4096 Oct  8 09:42  utils
+-rw-r--r--  1 lawr lawr     486637 Oct  8 09:36  uv.lock
+drwxrwxr-x  6 lawr lawr       4096 Oct  8 09:49  venv
+total 16
+drwxr-xr-x  4 lawr lawr 4096 Oct  8 09:36 .
+drwxr-xr-x 11 lawr lawr 4096 Oct  8 10:44 ..
+drwxr-xr-x  2 lawr lawr 4096 Oct  8 09:36 css
+drwxr-xr-x  2 lawr lawr 4096 Oct  8 09:36 js
+total 64
+drwxr-xr-x 2 lawr lawr  4096 Oct  8 09:36 .
+drwxr-xr-x 4 lawr lawr  4096 Oct  8 09:36 ..
+-rw-r--r-- 1 lawr lawr 34823 Oct  8 09:36 comprehensive-processor.js
+-rw-r--r-- 1 lawr lawr  4834 Oct  8 09:36 main.js
+-rw-r--r-- 1 lawr lawr  8287 Oct  8 09:36 upload.js
+lawr@ubuai:~$ 
