@@ -1,0 +1,32 @@
+lawr@ubuai:/var/www/speech-app$ sudo journalctl -u speech-app -n 30 --no-pager
+Oct 15 08:48:16 ubuai gunicorn[7002]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/util.py", line 371, in import_app
+Oct 15 08:48:16 ubuai gunicorn[7002]:     mod = importlib.import_module(module)
+Oct 15 08:48:16 ubuai gunicorn[7002]:           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+Oct 15 08:48:16 ubuai gunicorn[7002]:     return _bootstrap._gcd_import(name[level:], package, level)
+Oct 15 08:48:16 ubuai gunicorn[7002]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "/var/www/speech-app/main.py", line 2, in <module>
+Oct 15 08:48:16 ubuai gunicorn[7002]:     from app import app
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "/var/www/speech-app/app.py", line 57, in <module>
+Oct 15 08:48:16 ubuai gunicorn[7002]:     UPLOAD_FOLDER = tempfile.gettempdir()
+Oct 15 08:48:16 ubuai gunicorn[7002]:                     ^^^^^^^^^^^^^^^^^^^^^
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "/usr/lib/python3.12/tempfile.py", line 454, in gettempdir
+Oct 15 08:48:16 ubuai gunicorn[7002]:     return _os.fsdecode(_gettempdir())
+Oct 15 08:48:16 ubuai gunicorn[7002]:                         ^^^^^^^^^^^^^
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "/usr/lib/python3.12/tempfile.py", line 447, in _gettempdir
+Oct 15 08:48:16 ubuai gunicorn[7002]:     tempdir = _get_default_tempdir()
+Oct 15 08:48:16 ubuai gunicorn[7002]:               ^^^^^^^^^^^^^^^^^^^^^^
+Oct 15 08:48:16 ubuai gunicorn[7002]:   File "/usr/lib/python3.12/tempfile.py", line 362, in _get_default_tempdir
+Oct 15 08:48:16 ubuai gunicorn[7002]:     raise FileNotFoundError(_errno.ENOENT,
+Oct 15 08:48:16 ubuai gunicorn[7002]: FileNotFoundError: [Errno 2] No usable temporary directory found in ['/var/www/speech-app/tmp', '/tmp', '/var/tmp', '/usr/tmp', '/var/www/speech-app']
+Oct 15 08:48:17 ubuai systemd[1]: speech-app.service: Main process exited, code=exited, status=1/FAILURE
+Oct 15 08:48:17 ubuai systemd[1]: speech-app.service: Failed with result 'exit-code'.
+Oct 15 08:48:17 ubuai systemd[1]: Failed to start speech-app.service - Speech Processing Application.
+lawr@ubuai:/var/www/speech-app$ 
