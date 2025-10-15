@@ -1,25 +1,33 @@
-import requests
 import logging
 import json
-import socket
 from datetime import datetime
+
+# Import QMClient Python library
+try:
+    import qmclient as qm
+    QMCLIENT_AVAILABLE = True
+except ImportError:
+    QMCLIENT_AVAILABLE = False
+    print("Warning: qmclient module not found. OpenQM functionality will be limited.")
 
 logger = logging.getLogger(__name__)
 
 # OpenQM server configuration
 OPENQM_SERVER = "10.1.34.103"
-OPENQM_PORT = 8181  # Default REST API port, adjust if needed
-OPENQM_REST_URL = f"http://{OPENQM_SERVER}:{OPENQM_PORT}"
-
-# Database configuration
-OPENQM_ACCOUNT = "LCS"  # Account/database name
+OPENQM_PORT = 4243  # Default QMClient port
+OPENQM_ACCOUNT = "LCS"
 OPENQM_USERNAME = "lawr"
 OPENQM_PASSWORD = "apgar-66"
-OPENQM_FILE = "TRANSCRIPT"  # File/table name
+OPENQM_FILE = "TRANSCRIPT"
+
+# QM field/value mark characters
+FM = chr(254)  # Field Mark
+VM = chr(253)  # Value Mark
+SM = chr(252)  # Subvalue Mark
 
 def save_transcript_to_openqm(transcript_data, summary_data=None):
     """
-    Save transcript and optional summary to OpenQM database
+    Save transcript and optional summary to OpenQM database using QMClient
     
     Args:
         transcript_data (dict): Transcript data containing text, metadata, etc.
@@ -28,120 +36,112 @@ def save_transcript_to_openqm(transcript_data, summary_data=None):
     Returns:
         dict: Result of save operation
     """
+    if not QMCLIENT_AVAILABLE:
+        return {
+            'success': False,
+            'error': 'QMClient library not available. Install qmclient.py to enable OpenQM integration.'
+        }
+    
+    session = None
+    fno = None
+    
     try:
         # Generate unique record ID using timestamp
         record_id = f"TRANS_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
         
-        # Build record data structure
-        record = {
-            'ID': record_id,
-            'TIMESTAMP': datetime.now().isoformat(),
-            'ORIGINAL_TEXT': transcript_data.get('text', ''),
-            'SOURCE_TYPE': transcript_data.get('source_type', 'unknown'),
-            'SOURCE_URL': transcript_data.get('source_url', ''),
-            'LANGUAGE': transcript_data.get('language', 'en'),
-            'DURATION': transcript_data.get('duration', 0),
-            'FILE_NAME': transcript_data.get('file_name', ''),
-        }
+        logger.info(f"Connecting to OpenQM server {OPENQM_SERVER}:{OPENQM_PORT}")
         
-        # Add LLM processing data if available
+        # Connect to OpenQM server
+        session = qm.Connect(OPENQM_SERVER, OPENQM_PORT, OPENQM_USERNAME, OPENQM_PASSWORD, OPENQM_ACCOUNT)
+        
+        if not session:
+            return {
+                'success': False,
+                'error': f'Failed to connect to OpenQM at {OPENQM_SERVER}:{OPENQM_PORT}'
+            }
+        
+        logger.info(f"Connected to OpenQM. Opening file {OPENQM_FILE}")
+        
+        # Open the TRANSCRIPT file
+        fno = qm.Open(OPENQM_FILE)
+        
+        if fno < 0:
+            qm.Disconnect()
+            return {
+                'success': False,
+                'error': f'Failed to open file {OPENQM_FILE}. Error code: {qm.Status()}'
+            }
+        
+        # Build record with field marks between fields
+        fields = []
+        fields.append(datetime.now().isoformat())  # Field 1: TIMESTAMP
+        fields.append(transcript_data.get('text', ''))  # Field 2: ORIGINAL_TEXT
+        fields.append(transcript_data.get('source_type', 'unknown'))  # Field 3: SOURCE_TYPE
+        fields.append(transcript_data.get('source_url', ''))  # Field 4: SOURCE_URL
+        fields.append(transcript_data.get('language', 'en'))  # Field 5: LANGUAGE
+        fields.append(str(transcript_data.get('duration', 0)))  # Field 6: DURATION
+        fields.append(transcript_data.get('file_name', ''))  # Field 7: FILE_NAME
+        
+        # Add LLM processing fields if available
         if summary_data:
-            record['HAS_LLM_PROCESSING'] = 'Y'
-            record['LLM_PROMPT'] = summary_data.get('prompt', '')  # User's instruction to LLM
-            record['LLM_RESPONSE'] = summary_data.get('processed_text', '')  # LLM's response
-            record['LLM_MODEL'] = summary_data.get('model', '')
-            record['PROCESSING_TYPE'] = summary_data.get('processing_type', '')
+            fields.append('Y')  # Field 8: HAS_LLM_PROCESSING
+            fields.append(summary_data.get('prompt', ''))  # Field 9: LLM_PROMPT
+            fields.append(summary_data.get('processed_text', ''))  # Field 10: LLM_RESPONSE
+            fields.append(summary_data.get('model', ''))  # Field 11: LLM_MODEL
+            fields.append(summary_data.get('processing_type', ''))  # Field 12: PROCESSING_TYPE
         else:
-            record['HAS_LLM_PROCESSING'] = 'N'
+            fields.append('N')  # Field 8: HAS_LLM_PROCESSING
+            fields.append('')  # Field 9: LLM_PROMPT
+            fields.append('')  # Field 10: LLM_RESPONSE
+            fields.append('')  # Field 11: LLM_MODEL
+            fields.append('')  # Field 12: PROCESSING_TYPE
         
-        # Add any additional metadata
-        if 'metadata' in transcript_data:
-            record['METADATA'] = json.dumps(transcript_data['metadata'])
+        # Join fields with field marks
+        record_data = FM.join(fields)
         
-        logger.info(f"Attempting to save record {record_id} to OpenQM")
+        logger.info(f"Writing record {record_id} to OpenQM")
         
-        # Try REST API method first
-        result = _save_via_rest_api(record)
+        # Write the record
+        qm.Write(fno, record_id, record_data)
         
-        if result['success']:
-            return result
+        # Check status
+        status = qm.Status()
+        if status == 0:  # SV_OK
+            logger.info(f"Successfully saved record {record_id} to OpenQM")
+            result = {
+                'success': True,
+                'record_id': record_id,
+                'message': f'Record saved to OpenQM file {OPENQM_FILE}'
+            }
+        else:
+            result = {
+                'success': False,
+                'error': f'Write failed with status code {status}'
+            }
         
-        # If REST fails, try alternative methods
-        logger.warning(f"REST API save failed: {result.get('error')}")
+        # Close file and disconnect
+        if fno is not None:
+            qm.Close(fno)
+        if session is not None:
+            qm.Disconnect()
         
-        # Return the record data for manual saving or alternative method
-        return {
-            'success': False,
-            'error': 'OpenQM REST API not available. Record data prepared but not saved.',
-            'record_id': record_id,
-            'record_data': record,
-            'alternative_methods': [
-                'Use OpenQM UniObjects for direct connection',
-                'Use ODBC connection',
-                'Manually import JSON record',
-                'Use OpenQM telnet/socket interface'
-            ]
-        }
+        return result
         
     except Exception as e:
         error_msg = f"Error saving to OpenQM: {str(e)}"
         logger.error(error_msg)
+        
+        # Clean up connection
+        try:
+            if fno is not None:
+                qm.Close(fno)
+            if session is not None:
+                qm.Disconnect()
+        except:
+            pass
+        
         return {'success': False, 'error': error_msg}
 
-def _save_via_rest_api(record):
-    """
-    Save record using OpenQM REST API
-    
-    Args:
-        record (dict): Record data to save
-    
-    Returns:
-        dict: Result of save operation
-    """
-    try:
-        # Construct REST API endpoint
-        # Adjust based on your OpenQM REST API configuration
-        endpoint = f"{OPENQM_REST_URL}/api/write"
-        
-        payload = {
-            'account': OPENQM_ACCOUNT,
-            'username': OPENQM_USERNAME,
-            'password': OPENQM_PASSWORD,
-            'file': OPENQM_FILE,
-            'record_id': record['ID'],
-            'data': record
-        }
-        
-        response = requests.post(
-            endpoint,
-            json=payload,
-            auth=(OPENQM_USERNAME, OPENQM_PASSWORD) if OPENQM_USERNAME else None,
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            logger.info(f"Successfully saved record {record['ID']} to OpenQM")
-            return {
-                'success': True,
-                'record_id': record['ID'],
-                'message': 'Record saved to OpenQM'
-            }
-        else:
-            return {
-                'success': False,
-                'error': f'OpenQM API returned status {response.status_code}: {response.text}'
-            }
-            
-    except requests.exceptions.ConnectionError:
-        return {
-            'success': False,
-            'error': f'Cannot connect to OpenQM REST API at {OPENQM_REST_URL}'
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f'REST API error: {str(e)}'
-        }
 
 def export_to_json_for_openqm(record_data, output_file=None):
     """
@@ -171,46 +171,42 @@ def export_to_json_for_openqm(record_data, output_file=None):
 
 def test_openqm_connection():
     """
-    Test connection to OpenQM server
+    Test connection to OpenQM server using QMClient
     
     Returns:
         dict: Connection status
     """
-    try:
-        # Try REST API
-        response = requests.get(f"{OPENQM_REST_URL}/api/ping", timeout=5)
-        if response.status_code == 200:
-            return {
-                'success': True,
-                'message': 'Successfully connected to OpenQM REST API',
-                'url': OPENQM_REST_URL,
-                'method': 'REST API'
-            }
-    except:
-        pass
+    if not QMCLIENT_AVAILABLE:
+        return {
+            'success': False,
+            'error': 'QMClient library not available',
+            'suggestion': 'Install qmclient.py to enable OpenQM integration'
+        }
     
-    # Try socket connection
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5)
-        result = sock.connect_ex((OPENQM_SERVER, OPENQM_PORT))
-        sock.close()
+        # Try to connect using QMClient
+        session = qm.Connect(OPENQM_SERVER, OPENQM_PORT, OPENQM_USERNAME, OPENQM_PASSWORD, OPENQM_ACCOUNT)
         
-        if result == 0:
+        if session:
+            qm.Disconnect()
             return {
                 'success': True,
-                'message': f'OpenQM server is reachable at {OPENQM_SERVER}:{OPENQM_PORT}',
-                'method': 'Socket',
-                'note': 'Configure REST API or UniObjects for data operations'
+                'message': f'Successfully connected to OpenQM at {OPENQM_SERVER}:{OPENQM_PORT}',
+                'account': OPENQM_ACCOUNT,
+                'method': 'QMClient'
             }
-    except:
-        pass
-    
-    return {
-        'success': False,
-        'error': f'Cannot connect to OpenQM at {OPENQM_SERVER}:{OPENQM_PORT}',
-        'suggestion': 'Verify OpenQM server is running and port/IP are correct'
-    }
+        else:
+            return {
+                'success': False,
+                'error': f'Failed to connect to OpenQM at {OPENQM_SERVER}:{OPENQM_PORT}',
+                'suggestion': 'Check server address, port, and credentials'
+            }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Connection error: {str(e)}',
+            'suggestion': 'Verify OpenQM server is running and accessible'
+        }
 
 def get_openqm_config():
     """
@@ -222,7 +218,8 @@ def get_openqm_config():
     return {
         'server': OPENQM_SERVER,
         'port': OPENQM_PORT,
-        'rest_url': OPENQM_REST_URL,
         'account': OPENQM_ACCOUNT,
-        'file': OPENQM_FILE
+        'username': OPENQM_USERNAME,
+        'file': OPENQM_FILE,
+        'qmclient_available': QMCLIENT_AVAILABLE
     }

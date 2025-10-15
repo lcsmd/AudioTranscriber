@@ -1,0 +1,1514 @@
+
+QMClient API
+Top  Previous  Next
+ 
+
+The QMClient API allows an external application to connect to a QM server. There are API equivalents to the major file handling statements of QMBasic as well as a range of string functions for dynamic array data manipulations, functions to execute commands and call catalogued subroutines on the server, etc. Where both ends of the connection support it, the network traffic is encrypted for security.
+
+ 
+
+QMClient allows multiple simultaneous connections from a single client process. This allows development of applications that draw on data from multiple sources or transfer data between accounts or servers.
+
+ 
+
+QMClient is usable from many languages and environments. The table below shows the library name, function definition record in the SYSCOM file. Except as noted below, the library files appropriate to the version of QM in use are normally automatically installed in the bin subdirectory of the QMSYS account. Because the client software might be for a different system type, these files are also on the Downloads page of the openqm.com web site. Some QMClient variants are separately downloadable items on the Resources and Solutions page of the openqm.com web site as noted below.
+
+ 
+
+Language
+
+Library
+
+Definitions
+
+Notes
+
+Visual Basic .Net
+
+qmclivb.dll + qmclilib.dll
+
+
+Add reference to qmclivb.dll and use "Imports qm.qmclient" to access library functions
+
+Visual Basic 2005
+
+qmclient.dll + qmclient.lib
+
+qmclient2005.vb
+
+
+Power Basic
+
+qmclient.dll + qmclient.lib
+
+qmclient.inc
+
+
+PureBasic (Windows)
+
+qmclilib.dll + qmclilib.lib
+
+qmclient.pb
+
+qmclient.unicode.pb
+
+
+PureBasic (Linux)
+
+qmclilib.so + qmclilib.lib
+
+qmclient.pb
+
+qmclient.unicode.pb
+
+
+C, C++ (Windows, Microsoft)
+
+qmclilib.dll + qmclilib.lib
+
+qmclilib.h
+
+
+C, C++ (Linux)
+
+libqmclient.a (static)
+
+qmclilib.so (shared)
+
+qmclilib.h
+
+
+C, C++ (Mac)
+
+libqmclient.a (static)
+
+qmclilib.dylib (dynamic)
+
+qmclilib.h
+
+
+C#
+
+qmclilib.dll
+
+qmclilib.ansi.cs
+
+qmclilib.unicode.cs
+
+
+Java (Windows, JNI)
+
+JNI_QMClient.dll
+
+QMClient.jar
+
+
+These two versions are the original implementation of the QMClient Java API using platform specific Java Native Interface libraries, downloadable from the Resources and Solutions area. They are no longer updated or supported.
+
+Java (Android, JNI)
+
+libqmclilib.so
+
+QMClient.jar
+
+
+Java
+
+qmclient.jar
+
+
+This version is a pure Java implementation of the QMClient Java API and is portable across all platforms.
+
+PHP (Linux)
+
+qmclilib.so
+
+
+This item is downloadable from the Resources and Solutions area.
+
+QMBasic
+
+!qmclient
+
+
+In global catalogue
+
+Python
+
+qmclilib.dll (Windows)
+
+qmclilib.so (Linux/Unix)
+
+qmclient.py
+
+It may be necessary to add the location of the qmclient.py module to the PYTHONPATH environment variable.
+
+ 
+
+ 
+
+The secret of writing efficient client server applications is to perform the bulk data processing on the server and only handle user interface issues on the client. This minimises the data transferred between the systems and hence optimises performance.
+
+ 
+
+QMClient has some security issues that need special consideration.
+
+ 
+
+A QMClient session is an interactive use of the system and hence is counted in determining the licensed user limit on the server.
+
+ 
+
+The QMClient libraries listed above may be freely distributed with application software. The QM licence redistribution clauses apply to the server software, not the QMClient client-side components. Although every attempt is made to ensure compatibility with older versions of the client libraries, there may be times when changes require the distributed client components to be updated.
+
+ 
+
+There are some aspects of the QMClient API that differ between the various client languages. The following descriptions cover the most commonly used languages. For the less widely used languages such as PowerBasic, see the comments at the head of the relevant item in the SYSCOM file.
+
+ 
+
+ 
+
+Using the C API
+
+ 
+
+Use of the C programmers' API is different depending on the compiler in use. On Unix/Linux based systems, programs need to include the libqmclient.a library when linking the application. The Linux version of QM also includes a shared object version of QMClient API named qmclilib.so. On Windows, the qmclilib.dll dynamic link library is used and the qmclilib.lib import library should be included when linking the application. All of these components can be found in the bin subdirectory of the QMSYS account. The function definitions can be found in the qmclilib.h include record in the SYSCOM file.
+
+ 
+
+Functions that return Boolean values, return 0 for False, 1 for True in the C API library.
+
+ 
+
+With the exception of QMError(), all API calls that return strings dynamically allocate memory to hold the returned data. It is the calling program's responsibility to release this memory using the QMFree() function when it is no longer required. On Windows systems, this function must be used in place of the standard free() C runtime library routine to ensure compatibility with the memory allocator used by the QMClient library. On other platforms, use of QMFree() is strongly recommended but this should be compatible with the C run time library free() function.
+
+ 
+
+The QMClient C API has three modes of operation for handling character string data:
+
+ 
+
+1.The functions documented in the following sections use 8-bit characters. Using these functions to return data that is outside the 8-bit character set (e.g. reading a record containing ECS characters) will return only the low order 8 bits of each character. No error status will be reported.
+
+ 
+
+2.The QMConnectionType() function can be used to select a mode in which the functions that pass character strings in 8-bit form do so using UTF-8 encoding. This allows an application using the 8-bit character functions to use characters from the entire Unicode Basic Multilingual Plane. Note that use of this mode requires that characters in the upper half of the 8-bit character set, including the multivalue mark characters, are correctly encoded as their UTF-8 equivalents. The five mark characters encode as
+
+Item mark	"\xC3\xBF"
+Field mark	"\xC3\xBE"
+Value mark	"\xC3\xBD"
+Subvalue mark	"\xC3\xBC"
+Text mark	"\xC3\xBB"
+ 
+
+3.All functions in the QMClient C API that return a character string or have at least one character string argument have wide character variants formed by appending a W to the function name. For example, the wide character version of QMDel() is named QMDelW(). In the wide character versions, return values or arguments shown in the function definitions as char * become wchar_t *. Note that, for compatibility with the default behaviour of the C run time library, the definition of this data type is a 16 bit unsigned integer on Windows but a 32 bit unsigned integer on Linux and Unix systems.
+
+ 
+
+The wide character API functions can be used regardless of whether the server to which the connection is open is in ECS mode or not, however, passing characters with values over 255 in API calls in this situation may have unexpected effects. The QMIsECS() function can be used to determine whether the server supports ECS or not.
+
+ 
+
+QMBasic subroutines and functions can update their argument values. For the C API this would require that the memory space allocated to a subroutine argument that may be updated by the server must be large enough to hold the longest updated value that could occur. Failure to observe this rule may result in memory corruption on the client side of the connection. To avoid this issue, the C API supports an alternative mechanism for handling returned argument values where the original argument variable is not updated but instead the new value can be retrieved with the QMGetArg() function. To make use of this system, the client software should use QMCallx() instead of QMCall(). The QMCreateObject(), QMGet() and QMSet() functions also allow updated argument values to be retrieved with QMGetArg().
+
+ 
+
+ 
+
+Using the Visual Basic .Net API
+
+ 
+
+Use of QMClient from Visual Basic .Net requires two dynamic link libraries; qmclivb.dll and qmclilib.dll. Inclusion of the first of these libraries as a reference from the Visual Basic project and adding
+
+Imports qm.qmclient
+
+to the Visual Basic classes makes the QMClient functions available. The descriptions for each QMClient function in this documentation show the VB.Net data types.
+
+ 
+
+The dynamic link libraries must be installed on the client system. They are automatically placed in the Windows directory (not necessarily c:\windows) when QM is installed. These components may be freely copied and distributed as necessary. They can also be downloaded separately from the openqm.com web site.
+
+ 
+
+All strings in the Visual Basic .Net API are Unicode.
+
+ 
+
+Where a client application calls a QMBasic subroutine or function on the server that updates its argument values, the modified value will be visible in the client process too when using QMCall(). The alternative method of calling subroutines with QMCallx() and handling returned argument values via the QMGetArg() function is also available in the Visual Basic .Net API.
+
+ 
+
+ 
+
+Using the Visual Basic 2005 API
+
+ 
+
+QM currently retains support for Visual Basic 2005 using the qmclient.dll dynamic link library and a Visual Basic module named QMClient 2005.vb in the SYSCOM file that contains the API function definitions. Many of the function argument values passed by the VB.Net API as integers are passed as short integers in the old Visual Basic API and hence differ from the VB.Net definitions shown in the function descriptions in this documentation. See the QMClient2005.vb file for the correct definitions.
+
+ 
+
+The QMClient.dll library must be installed on the client system. This library is placed in the Windows directory (not necessarily c:\windows) when QM is installed. These components may be freely copied and distributed as necessary.
+
+ 
+
+All strings in the Visual Basic 2005 API are 8-bit.
+
+ 
+
+Where a client application uses QMCall() to call a QMBasic subroutine or function on the server that updates its argument values, the modified values will be visible in the client process.
+
+ 
+
+Visual Basic versions 5 and 6 are no longer supported though the function definition items for these in the SYSCOM file will not be deleted by the installer.
+
+ 
+
+ 
+
+ 
+
+Using the QMBasic Class Module API
+
+ 
+
+The QMClient class module is supplied as a globally catalogued item named !QMCLIENT. To create a QMClient session, the object is instantiated with a statement of the form
+
+session = object("!qmclient")
+
+ 
+
+The session is then connected to a server using the CONNECT() method:
+
+ok = session->connect(hostname, port, user, password, account)
+
+ 
+
+There is no equivalent of the QMConnectLocal() function in the QMBasic class module API.
+
+ 
+
+Functions that return Boolean values, return 0 for False, 1 for True in the QMBasic class module API. Status codes referenced with a prefix of SV_ in the function descriptions are defined in the SYSCOM KEYS.H include record with a prefix of SV$. For example, SV_OK becomes SV$OK for the QMBasic variant of the QMClient API.
+
+ 
+
+All examples in the detailed function descriptions assume that the object has been instantiated as a variable named "session".
+
+ 
+
+ 
+
+Using the Java QMClient API
+
+ 
+
+Two distinct versions of the Java API are available. The original implementation is platform specific because it uses the Java Native Interface (JNI). This version can be downloaded from the OpenQM web site Resources and Solutions area. The Java QMClient API installation package includes separate HTML documentation covering its usage.
+
+ 
+
+A pure Java version of the API was introduced at QM release 3.4-7 and can be found on the main downloads page of the web site. This version is portable across all platforms that support Java. Documentation for the functions in this API appears in the sections that follow. To use this API, the client program should use
+
+import qmclient.*;
+
+and then reference the functions in the form qm.Name() such that, for example, the QMExtract() function becomes
+
+var = qm.Extract(dyn_array, field, value, subvalue);
+
+ 
+
+All references to the Java API in the following sections relate to the portable Java API. All examples in the function descriptions assume that the object has been instantiated as a variable named "qm".
+
+ 
+
+ 
+
+ 
+
+Using QMClient from Python
+
+ 
+
+The qmclient.py item in the SYSCOM file has definitions and descriptions for Python versions of the API functions and also has comment text at the top of the module that describes how to use it. Essentially, the Python program should use
+
+import qmclient.py as qm
+
+and then reference the functions in the form qm.Name() such that, for example, the QMExtract() function becomes
+
+var = qm.Extract(dyn_array, field, value, subvalue)
+
+ 
+
+If the qmclient.py file is not in the current directory, the PYTHONPATH environment variable must be set as a list of directories to search for imported modules in the same form as used for the PATH environment variable. Also note that on Windows, which has a case insensitive file system, the casing of Python module filenames must match that used in the import statement.
+
+ 
+
+Because Python does not support passing arguments by reference, QMClient functions that use this capability in other languages are modified to return two items as a list such that, for example, QMRead() becomes
+
+rec, err = qm.Read(fno, id)
+
+or QMLocate() becomes
+
+found, pos = qm.Locate(item, dyn_array, field, value, subvalue, order)
+
+All examples in the function descriptions assume that the object has been instantiated as a variable named "qm".
+
+ 
+
+ 
+
+Error Handling in QMClient Applications
+
+ 
+
+QMClient was originally developed for use in applications that had a directly associated user screen on which error messages could be displayed. It has subsequently found use in applications that do not have a directly associated screen such as the server side of a web application. In such situations when using some languages, it will be necessary to use the QMConnectionType function to disable display of error messages. To ensure that older applications continue to run unchanged, the default behaviour of QMClient is to display errors either using a pop-up message box (Windows) or by sending the message to the stderr error channel (Linux).
+
+ 
+
+From release 2.11-3, nearly all QMClient functions start by setting the QMError() error string to null. Applications can test if QMError() is a null string in order to determine whether an error has occurred. Errors are returned in this way even if the older style displayed messages are still enabled. The functions that do not change the QMError value are QMFree, QMStatus and QMError itself. Alternatively, applications can check the server status code as described later in this section.
+
+ 
+
+ 
+
+Multi-threading
+
+ 
+
+The QMClient API supports multi-threading so long as two threads do not attempt an operation on the same session simultaneously. If a session could never be accessed by more than one thread simultaneously, no special coding is needed. In languages such as Java or Python where each QM session is instantiated as a separate object, each function call references the specific object to which it applies. For other languages, sessions are identified by a numeric value and a thread may switch between multiple sessions using QMSetSession() in which case QMClient will correctly track the currently active session in each thread. If a single session could be accessed by multiple threads simultaneously, it will be necessary to use semaphores or similar synchronisation techniques to ensure that actions on a single session do not overlap. This includes treating a QMExecute() followed by one or more QMRespond() requests as a single action.
+
+ 
+
+ 
+
+API Function Summary
+
+ 
+
+For the C API, "W" indicates that a wide string version of the function is available.
+
+ 
+
+ 
+
+VB.Net
+
+VB 2005
+
+C
+
+QMBasic
+
+
+QMCall
+
+Y
+
+Y
+
+W
+
+Y
+
+Call a subroutine on the server
+
+QMCallx
+
+Y
+
+Y
+
+W
+
+ 
+
+Call a subroutine on the server, returning updated arguments with QMGetArg()
+
+QMChange
+
+Y
+
+Y
+
+W
+
+ 
+
+Replace substrings in a string
+
+QMChecksum
+
+Y
+
+Y
+
+W
+
+ 
+
+Calculate a checksum value
+
+QMClearFile
+
+Y
+
+Y
+
+Y
+
+Y
+
+Clear a file
+
+QMClearSelect
+
+Y
+
+Y
+
+Y
+
+Y
+
+Clear a select list
+
+QMClose
+
+Y
+
+Y
+
+Y
+
+Y
+
+Close a file
+
+QMConnect
+
+Y
+
+Y
+
+W
+
+Y
+
+Establish a session via a network connection
+
+QMConnected
+
+Y
+
+Y
+
+Y
+
+Y
+
+Verify whether connection is open
+
+QMConnectionType
+
+Y
+
+Y
+
+Y
+
+ 
+
+Set options that affect QMClient behaviour
+
+QMConnectLocal
+
+Y
+
+Y
+
+W
+
+ 
+
+Establish a session on the local system
+
+QMConnectPool
+
+Y
+
+Y
+
+W
+
+Y
+
+Establish a connection pooling session via a network connection
+
+QMCreateObject
+
+Y
+
+Y
+
+W
+
+Y
+
+Instantiate a QMBasic class instance object
+
+QMDcount
+
+Y
+
+ 
+
+W
+
+ 
+
+Count delimited items in a string
+
+QMDecrypt
+
+ 
+
+ 
+
+Y
+
+ 
+
+Decrypt data
+
+QMDel
+
+Y
+
+Y
+
+W
+
+ 
+
+Delete a field, value or subvalue from a dynamic array
+
+QMDelete
+
+Y
+
+Y
+
+W
+
+Y
+
+Delete a record from an open file
+
+QMDeleteu
+
+Y
+
+Y
+
+W
+
+Y
+
+Delete a record from an open file, retaining the lock
+
+QMDestroyObject
+
+Y
+
+Y
+
+Y
+
+Y
+
+Discard a QMBasic class instance object
+
+QMDisconnect
+
+Y
+
+Y
+
+Y
+
+Y
+
+Terminate a QMClient session
+
+QMDisconnectAll
+
+Y
+
+Y
+
+Y
+
+ 
+
+Terminate all QMClient sessions from this client
+
+QMEncrypt
+
+ 
+
+ 
+
+W
+
+ 
+
+Encrypt data
+
+QMEncryptx
+
+ 
+
+ 
+
+W
+
+ 
+
+Encrypt data with random initialisation vector
+
+QMEndCommand
+
+Y
+
+Y
+
+Y
+
+Y
+
+Terminate a command started with QMExecute()
+
+QMEnterPackage
+
+Y
+
+Y
+
+W
+
+Y
+
+Enter a licensed package
+
+QMError
+
+Y
+
+Y
+
+W
+
+ 
+
+Return the text associated with the most recent error
+
+QMEvalConv
+
+Y
+
+Y
+
+W
+
+ 
+
+Evaluate a dictionary data definition item, applying conversion codes
+
+QMEvaluate
+
+Y
+
+Y
+
+W
+
+Y
+
+Evaluate a dictionary data definition item
+
+QMExecute
+
+Y
+
+Y
+
+W
+
+Y
+
+Execute a command
+
+QMExitPackage
+
+Y
+
+Y
+
+W
+
+Y
+
+Exit from a licensed package
+
+QMExtract
+
+Y
+
+Y
+
+W
+
+ 
+
+Extract a field, value or subvalue from a dynamic array
+
+QMField
+
+Y
+
+Y
+
+W
+
+ 
+
+Extract a substring from a delimited string
+
+QMGet
+
+Y
+
+Y
+
+W
+
+Y
+
+Return the value of a public variable or function in a QMBasic object
+
+QMGetArg
+
+Y
+
+ 
+
+W
+
+ 
+
+Get a returned argument value from QMCallx(), QMCreateObject(), QMGet() or QMSet()
+
+QMGetSession
+
+Y
+
+Y
+
+Y
+
+ 
+
+Return currently selected session number
+
+QMGetVar
+
+Y
+
+ 
+
+W
+
+Y
+
+Fetch the value of an @-variable on the server
+
+QMIConv
+
+Y
+
+Y
+
+W
+
+Y
+
+Apply input conversion codes
+
+QMIConvs
+
+Y
+
+Y
+
+W
+
+Y
+
+Apply input conversion codes to multivalued data
+
+QMIndices
+
+Y
+
+Y
+
+W
+
+Y
+
+Retrieve information about indices
+
+QMIns
+
+Y
+
+Y
+
+W
+
+ 
+
+Insert a field, value or subvalue in a dynamic array
+
+QMIsECS
+
+ 
+
+ 
+
+Y
+
+Y
+
+Test if server is running in ECS mode
+
+QMLocate
+
+Y
+
+Y
+
+W
+
+ 
+
+Locate a field, value or subvalue in a dynamic array
+
+QMLogto
+
+Y
+
+Y
+
+W
+
+Y
+
+Switch to a different account
+
+QMMarkMapping
+
+Y
+
+Y
+
+Y
+
+Y
+
+Enable or disable mark mapping for a directory file
+
+QMMatch
+
+Y
+
+Y
+
+W
+
+ 
+
+Match a string against a pattern template
+
+QMMatchfield
+
+Y
+
+Y
+
+W
+
+ 
+
+Return the portion of a string that matches a pattern template element
+
+QMNextPartial
+
+Y
+
+Y
+
+W
+
+Y
+
+Return next part of a select list
+
+QMOConv
+
+Y
+
+Y
+
+W
+
+Y
+
+Apply output conversion codes
+
+QMOConvs
+
+Y
+
+Y
+
+W
+
+Y
+
+Apply output conversion codes to multivalued data
+
+QMOpen
+
+Y
+
+Y
+
+W
+
+Y
+
+Open a file
+
+QMOpenSeq
+
+Y
+
+ 
+
+W
+
+Y
+
+Open a sequential file
+
+QMPoolIdle
+
+Y
+
+ 
+
+Y
+
+Y
+
+Move a connection pooling session into an idle wait state
+
+QMRead
+
+Y
+
+Y
+
+W
+
+Y
+
+Read a record without locking
+
+QMReadBlk
+
+Y
+
+ 
+
+W
+
+Y
+
+Read a given number of bytes from a sequential file
+
+QMReadl
+
+Y
+
+Y
+
+W
+
+Y
+
+Read a record with a shareable read lock
+
+QMReadList
+
+Y
+
+Y
+
+W
+
+Y
+
+Read a select list
+
+QMReadNext
+
+Y
+
+Y
+
+W
+
+Y
+
+Read the next item from a select list
+
+QMReadSeq
+
+Y
+
+ 
+
+W
+
+Y
+
+Read a line of text from a sequential file
+
+QMReadu
+
+Y
+
+Y
+
+W
+
+Y
+
+Read a record with an update lock
+
+QMRecordlock
+
+Y
+
+Y
+
+W
+
+Y
+
+Lock a record
+
+QMRecordlocked
+
+Y
+
+Y
+
+W
+
+Y
+
+Query the lock state of a record
+
+QMRelease
+
+Y
+
+Y
+
+W
+
+Y
+
+Release a record lock
+
+QMReplace
+
+Y
+
+Y
+
+W
+
+ 
+
+Replace a field, value or subvalue in a dynamic array
+
+QMRespond
+
+Y
+
+Y
+
+W
+
+Y
+
+Respond to a request for input from a command started with QMExecute()
+
+QMRevision
+
+Y
+
+Y
+
+W
+
+Y
+
+Return the client and server QM version numbers
+
+QMRTrans
+
+Y
+
+ 
+
+W
+
+Y
+
+Perform an RTRANS() function to fetch data
+
+QMSeek
+
+Y
+
+ 
+
+Y
+
+Y
+
+Position in a sequential file
+
+QMSelect
+
+Y
+
+Y
+
+Y
+
+Y
+
+Generate a select list
+
+QMSelectIndex
+
+Y
+
+Y
+
+W
+
+Y
+
+Generate a select list from an alternate key index
+
+QMSelectLeft
+
+Y
+
+Y
+
+W
+
+Y
+
+Move left in an alternate key index
+
+QMSelectPartial
+
+Y
+
+Y
+
+W
+
+Y
+
+Optimised select operation, returning multiple keys
+
+QMSelectRight
+
+Y
+
+Y
+
+W
+
+Y
+
+Move right in an alternate key index
+
+QMSet
+
+Y
+
+Y
+
+W
+
+Y
+
+Set the value of a public variable or execute a public subroutine in a QMBasic object
+
+QMSetLeft
+
+Y
+
+Y
+
+W
+
+Y
+
+Position at the left in an alternate key index
+
+QMSetRight
+
+Y
+
+Y
+
+W
+
+Y
+
+Position at the right in an alternate key index
+
+QMSetSession
+
+Y
+
+Y
+
+Y
+
+ 
+
+Select session to which subsequent actions apply
+
+QMStatus
+
+Y
+
+Y
+
+Y
+
+ 
+
+Return the STATUS() value from the server
+
+QMSystem
+
+Y
+
+
+W
+
+Y
+
+Execute a QMBasic SYSTEM() function on the server
+
+QMTrans
+
+Y
+
+
+W
+
+Y
+
+Perform a TRANS() function to fetch data
+
+QMTrapCallAbort
+
+Y
+
+Y
+
+Y
+
+Y
+
+Enable client trapping of aborts in QMCall()
+
+QMTxn
+
+Y
+
+Y
+
+Y
+
+Y
+
+Start, commit or abort a transaction on the server.
+
+QMWeofSeq
+
+Y
+
+ 
+
+Y
+
+Y
+
+Truncate a sequential file item
+
+QMWrite
+
+Y
+
+Y
+
+W
+
+Y
+
+Write a record
+
+QMWriteBlk
+
+Y
+
+ 
+
+W
+
+Y
+
+Write a given number of bytes to a sequential file
+
+QMWriteSeq
+
+Y
+
+ 
+
+W
+
+Y
+
+Write a line of text to a sequential file
+
+QMWriteSeqKey
+
+Y
+
+Y
+
+W
+
+Y
+
+Write a record using an automatic sequential key
+
+QMWriteu
+
+Y
+
+Y
+
+W
+
+Y
+
+Write a record, retaining the record lock
+
+QMWriteuSeqKey
+
+Y
+
+Y
+
+W
+
+Y
+
+Write a record using an automatic sequential key, retaining the record lock
+
+ 
+
+ 
+
+The Server Status Code
+
+ 
+
+Many functions return a server error status referenced as Err in the detailed function descriptions. In variants of the QMClient API that allow function argument variables to be updated by the function (C, VB.Net, QMBasic class module), this variable is an integer argument, passed by reference. In the Python variant, the error status is returned as a second return value. For the Java variant, applications should test the ServerError property.
+
+ 
+
+In all cases, the value returned will be one of the following that broadly corresponding to the various clauses applicable to the equivalent QMBasic statements.
+
+ 
+
+0
+
+SV_OK
+
+Action successful
+
+1
+
+SV_ON_ERROR
+
+Action took the ON ERROR clause to recover from a situation that would otherwise cause the server process to abort.
+
+2
+
+SV_ELSE
+
+Action took the ELSE clause. In most cases the QMStatus() function can be used to determine the error number.
+
+3
+
+SV_ERROR
+
+An error occurred for which extended error text can be retrieved using the QMError() function.
+
+4
+
+SV_LOCKED
+
+The action was blocked by a lock held by another user. The QMStatus() function can be used to determine the blocking user.
+
+5
+
+SV_PROMPT
+
+A command executed on the server is waiting for input. The only valid client functions when this status is returned are QMRespond(), QMEndCommand and QMDisconnect.
+
+The tokens shown above are defined in the SYSCOM include record or module relevant to the language in use. For the Java and QMBasic variants of the API, the names are modified to be SV$xxx instead of SV_xxx.
+
+ 
+
+In the function descriptions that follow, the language specific details are presented as an expanding text that can be shown by clicking on the language name in the blue bar for the relevant language.

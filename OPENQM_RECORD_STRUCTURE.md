@@ -1,11 +1,15 @@
 # OpenQM Record Structure
 
 ## Configuration
-- **Server**: 10.1.34.103:8181
+- **Server**: 10.1.34.103
+- **Port**: 4243 (QMClient default port)
 - **Account**: LCS
 - **Username**: lawr
 - **Password**: apgar-66
 - **File**: TRANSCRIPT
+
+## QMClient Python Library
+The system now uses the official QMClient Python library (`qmclient.py`) for direct connection to OpenQM.
 
 ## Record Fields
 
