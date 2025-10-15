@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Transcribe</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f9f9fb;
+      color: #333;
+      max-width: 840px;
+      margin: 50px auto;
+      padding: 2em;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+      border-radius: 12px;
+      background: white;
+    }
+    h1 {
+      font-size: 2em;
+      color: #111;
+      display: flex;
+      align-items: center;
+    }
+    h1::before {
+      content: "🎙️";
+      margin-right: 10px;
+    }
+    label {
+      font-weight: 600;
+    }
+    input[type="radio"],
+    input[type="checkbox"] {
+      margin-right: 5px;
+    }
+    .section {
+      margin: 1.5em 0;
+    }
+    textarea, input[type="text"], input[type="url"], select {
+      width: 100%;
+      padding: 0.6em;
+      margin-top: 0.4em;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1em;
+    }
+    button {
+      padding: 0.6em 1.2em;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #progress {
+      margin-top: 1.5em;
+      background: #f0f0f0;
+      padding: 1em;
+      border-radius: 8px;
+      font-family: monospace;
+      white-space: pre-line;
+    }
+    .description {
+      font-size: 0.95em;
+      color: #555;
+      margin-top: 0.4em;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+  <script>
+    function toggleMode(mode) {
+      document.getElementById('stt-controls').style.display = mode === 'stt' ? 'block' : 'none';
+      document.getElementById('tts-controls').style.display = mode === 'tts' ? 'block' : 'none';
+    }
+    window.onload = () => {
+      toggleMode('stt');
+      document.getElementById('mode-stt').checked = true;
+    };
+  </script>
+</head>
+<body>
+  <h1>Smart Transcribe</h1>
+
+  <form method="post" action="/transcribe" enctype="multipart/form-data">
+    <div class="section">
+      <label>Mode:</label><br>
+      <input type="radio" name="mode" id="mode-stt" value="stt" onclick="toggleMode('stt')"> Speech to Text
+      <input type="radio" name="mode" value="tts" onclick="toggleMode('tts')"> Text to Speech
+    </div>
+
+    <div id="stt-controls" class="section">
+      <label>Upload File (mp3, wav, mp4, mov):</label>
+      <input type="file" name="file">
+      <div class="description">Or provide a public YouTube link below:</div>
+      <label>YouTube URL:</label>
+      <input type="url" name="youtube_url">
+
+      <label>Language:</label>
+      <select name="language">
+        <option value="en">English</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="zh">Chinese</option>
+      </select>
+
+      <label>Output Format:</label><br>
+      <input type="checkbox" name="output_format" value="text"> Text
+      <input type="checkbox" name="output_format" value="markdown"> Markdown
+      <input type="checkbox" name="output_format" value="docx"> Word
+      <input type="checkbox" name="output_format" value="pdf"> PDF
+    </div>
+
+    <div id="tts-controls" class="section hidden">
+      <label>Input Text:</label>
+      <textarea name="input_text" rows="6" placeholder="Enter the text you want converted to speech..."></textarea>
+
+      <label>Voice:</label>
+      <select name="voice">
+        <option value="default">Default</option>
+        <option value="elevenlabs" disabled>ElevenLabs (coming soon)</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <button type="submit">Transcribe</button>
+    </div>
+  </form>
+
+  <div id="progress"></div>
+</body>
+</html>
