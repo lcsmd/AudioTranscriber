@@ -1,0 +1,44 @@
+lawr@ubuai:/mnt/bigdisk$ # Copy from the correct nested path
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/templates/* /var/www/speech-app/templates/
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/static/* /var/www/speech-app/static/
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/utils/* /var/www/speech-app/utils/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/app.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/main.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/models.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/suggested_prompts.txt /var/www/speech-app/
+
+# Clean up
+rm -rf /mnt/bigdisk/AudioTranscriber_new
+
+# Before restarting, we STILL need to fix the disk space issue
+# Clean up to free space on root partition
+sudo apt-get clean
+sudo journalctl --vacuum-time=2d
+
+# Check space
+df -h /
+
+# Restart
+sudo systemctl restart speech-app
+sudo systemctl status speech-app
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/templates/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/static/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/utils/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/app.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/main.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/models.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/AudioTranscriber/suggested_prompts.txt': No such file or directory
+Vacuuming done, freed 0B of archived journals from /var/log/journal/e7cd9d02444f44edb4bb98eeeb58c232.
+Vacuuming done, freed 0B of archived journals from /var/log/journal.
+Vacuuming done, freed 0B of archived journals from /run/log/journal.
+Filesystem                         Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv   29G   28G     0 100% /
+Job for speech-app.service failed because the control process exited with error code.
+See "systemctl status speech-app.service" and "journalctl -xeu speech-app.service" for details.
+● speech-app.service - Speech Processing Application
+     Loaded: loaded (/etc/systemd/system/speech-app.service; enabled; preset: enabled)
+     Active: activating (auto-restart) (Result: exit-code) since Wed 2025-10-15 09:11:30 UTC; 18ms ago
+    Process: 8360 ExecStart=/var/www/speech-app/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --timeout 300 --preload>
+   Main PID: 8360 (code=exited, status=1/FAILURE)
+        CPU: 856ms
+lines 1-6/6 (END)
