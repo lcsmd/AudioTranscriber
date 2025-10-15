@@ -1,0 +1,35 @@
+lawr@ubuai:/var/www/speech-app$ # Extract to the big disk
+cd /mnt/bigdisk
+unzip -q AudioTranscriber.zip -d AudioTranscriber_new
+
+# Copy the files to the app directory
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/templates/* /var/www/speech-app/templates/
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/static/* /var/www/speech-app/static/
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/utils/* /var/www/speech-app/utils/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/app.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/main.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/models.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/suggested_prompts.txt /var/www/speech-app/
+
+# Clean up
+rm -rf /mnt/bigdisk/AudioTranscriber_new /mnt/bigdisk/AudioTranscriber.zip
+
+# Restart
+sudo systemctl restart speech-app
+sudo systemctl status speech-app
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/templates/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/static/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/utils/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/app.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/main.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/models.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/suggested_prompts.txt': No such file or directory
+Job for speech-app.service failed because the control process exited with error code.
+See "systemctl status speech-app.service" and "journalctl -xeu speech-app.service" for details.
+● speech-app.service - Speech Processing Application
+     Loaded: loaded (/etc/systemd/system/speech-app.service; enabled; preset: enabled)
+     Active: activating (auto-restart) (Result: exit-code) since Wed 2025-10-15 09:05:44 UTC; 19ms ago
+    Process: 7921 ExecStart=/var/www/speech-app/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --timeout 300 --preload>
+   Main PID: 7921 (code=exited, status=1/FAILURE)
+        CPU: 819ms
+lines 1-6/6 (END)
