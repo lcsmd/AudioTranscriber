@@ -12,8 +12,10 @@ OPENQM_PORT = 8181  # Default REST API port, adjust if needed
 OPENQM_REST_URL = f"http://{OPENQM_SERVER}:{OPENQM_PORT}"
 
 # Database configuration
-OPENQM_ACCOUNT = "SPEECH"  # Account/database name
-OPENQM_FILE = "TRANSCRIPTS"  # File/table name
+OPENQM_ACCOUNT = "LCS"  # Account/database name
+OPENQM_USERNAME = "lawr"
+OPENQM_PASSWORD = "apgar-66"
+OPENQM_FILE = "TRANSCRIPT"  # File/table name
 
 def save_transcript_to_openqm(transcript_data, summary_data=None):
     """
@@ -42,14 +44,15 @@ def save_transcript_to_openqm(transcript_data, summary_data=None):
             'FILE_NAME': transcript_data.get('file_name', ''),
         }
         
-        # Add summary data if available
+        # Add LLM processing data if available
         if summary_data:
-            record['HAS_SUMMARY'] = 'Y'
-            record['SUMMARY_TEXT'] = summary_data.get('processed_text', '')
-            record['SUMMARY_TYPE'] = summary_data.get('processing_type', '')
-            record['SUMMARY_MODEL'] = summary_data.get('model', '')
+            record['HAS_LLM_PROCESSING'] = 'Y'
+            record['LLM_PROMPT'] = summary_data.get('prompt', '')  # User's instruction to LLM
+            record['LLM_RESPONSE'] = summary_data.get('processed_text', '')  # LLM's response
+            record['LLM_MODEL'] = summary_data.get('model', '')
+            record['PROCESSING_TYPE'] = summary_data.get('processing_type', '')
         else:
-            record['HAS_SUMMARY'] = 'N'
+            record['HAS_LLM_PROCESSING'] = 'N'
         
         # Add any additional metadata
         if 'metadata' in transcript_data:
@@ -102,6 +105,8 @@ def _save_via_rest_api(record):
         
         payload = {
             'account': OPENQM_ACCOUNT,
+            'username': OPENQM_USERNAME,
+            'password': OPENQM_PASSWORD,
             'file': OPENQM_FILE,
             'record_id': record['ID'],
             'data': record
@@ -110,6 +115,7 @@ def _save_via_rest_api(record):
         response = requests.post(
             endpoint,
             json=payload,
+            auth=(OPENQM_USERNAME, OPENQM_PASSWORD) if OPENQM_USERNAME else None,
             timeout=10
         )
         

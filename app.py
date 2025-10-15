@@ -593,7 +593,11 @@ def process_job_worker(job_id, file_paths=None):
                                 'language': job.target_language,
                                 'file_name': job.original_filename
                             }
-                            save_result = save_transcript_to_openqm(transcript_data, llm_result)
+                            # Add the user's prompt to the LLM result data
+                            llm_result_with_prompt = llm_result.copy()
+                            llm_result_with_prompt['prompt'] = user_prompt
+                            
+                            save_result = save_transcript_to_openqm(transcript_data, llm_result_with_prompt)
                             logger.info(f"OpenQM save result: {save_result.get('message', save_result.get('error'))}")
                         
                         # Export to Markdown if requested
