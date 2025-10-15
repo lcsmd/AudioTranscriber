@@ -1,0 +1,52 @@
+lawr@ubuai:~$ sudo journalctl -xeu speech-app.service --no-pager | tail -50
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/arbiter.py", line 118, in setup
+Oct 15 06:17:52 ubuai gunicorn[3728]:     self.app.wsgi()
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/base.py", line 67, in wsgi
+Oct 15 06:17:52 ubuai gunicorn[3728]:     self.callable = self.load()
+Oct 15 06:17:52 ubuai gunicorn[3728]:                     ^^^^^^^^^^^
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+Oct 15 06:17:52 ubuai gunicorn[3728]:     return self.load_wsgiapp()
+Oct 15 06:17:52 ubuai gunicorn[3728]:            ^^^^^^^^^^^^^^^^^^^
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+Oct 15 06:17:52 ubuai gunicorn[3728]:     return util.import_app(self.app_uri)
+Oct 15 06:17:52 ubuai gunicorn[3728]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "/var/www/speech-app/venv/lib/python3.12/site-packages/gunicorn/util.py", line 371, in import_app
+Oct 15 06:17:52 ubuai gunicorn[3728]:     mod = importlib.import_module(module)
+Oct 15 06:17:52 ubuai gunicorn[3728]:           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+Oct 15 06:17:52 ubuai gunicorn[3728]:     return _bootstrap._gcd_import(name[level:], package, level)
+Oct 15 06:17:52 ubuai gunicorn[3728]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "/var/www/speech-app/main.py", line 2, in <module>
+Oct 15 06:17:52 ubuai gunicorn[3728]:     from app import app
+Oct 15 06:17:52 ubuai gunicorn[3728]:   File "/var/www/speech-app/app.py", line 15, in <module>
+Oct 15 06:17:52 ubuai gunicorn[3728]:     from utils.llm_processor import process_text_with_llm, get_available_models
+Oct 15 06:17:52 ubuai gunicorn[3728]: ModuleNotFoundError: No module named 'utils.llm_processor'
+Oct 15 06:17:52 ubuai systemd[1]: speech-app.service: Main process exited, code=exited, status=1/FAILURE
+░░ Subject: Unit process exited
+░░ Defined-By: systemd
+░░ Support: http://www.ubuntu.com/support
+░░ 
+░░ An ExecStart= process belonging to unit speech-app.service has exited.
+░░ 
+░░ The process' exit code is 'exited' and its exit status is 1.
+Oct 15 06:17:52 ubuai systemd[1]: speech-app.service: Failed with result 'exit-code'.
+░░ Subject: Unit failed
+░░ Defined-By: systemd
+░░ Support: http://www.ubuntu.com/support
+░░ 
+░░ The unit speech-app.service has entered the 'failed' state with result 'exit-code'.
+Oct 15 06:17:52 ubuai systemd[1]: Failed to start speech-app.service - Speech Processing Application.
+░░ Subject: A start job for unit speech-app.service has failed
+░░ Defined-By: systemd
+░░ Support: http://www.ubuntu.com/support
+░░ 
+░░ A start job for unit speech-app.service has finished with a failure.
+░░ 
+░░ The job identifier is 8999 and the job result is failed.
+lawr@ubuai:~$ 
