@@ -1,0 +1,37 @@
+lawr@ubuai:/mnt/bigdisk$ # Move the app to the big disk
+sudo mv /var/www/speech-app /mnt/bigdisk/speech-app
+
+# Create a symlink so the old path still works
+sudo ln -s /mnt/bigdisk/speech-app /var/www/speech-app
+
+# Update the service to use the new path
+sudo sed -i 's|/var/www/speech-app|/mnt/bigdisk/speech-app|g' /etc/systemd/system/speech-app.service
+
+# Reload and restart
+sudo systemctl daemon-reload
+sudo systemctl restart speech-app
+sudo systemctl status speech-app
+● speech-app.service - Speech Processing Application
+     Loaded: loaded (/etc/systemd/system/speech-app.service; enabled; preset: enabled)
+     Active: active (running) since Wed 2025-10-15 09:17:24 UTC; 22ms ago
+   Main PID: 8772 (gunicorn)
+     Status: "Gunicorn arbiter booted"
+      Tasks: 3 (limit: 77022)
+     Memory: 76.0M (peak: 76.2M)
+        CPU: 704ms
+     CGroup: /system.slice/speech-app.service
+             ├─8772 /var/www/speech-app/venv/bin/python3 /mnt/bigdisk/speech-app/venv/bin/gunicorn --workers 3 --bind 0.0>
+             ├─8779 /var/www/speech-app/venv/bin/python3 /mnt/bigdisk/speech-app/venv/bin/gunicorn --workers 3 --bind 0.0>
+             └─8784 /var/www/speech-app/venv/bin/python3 /mnt/bigdisk/speech-app/venv/bin/gunicorn --workers 3 --bind 0.0>
+
+Oct 15 09:17:23 ubuai systemd[1]: Starting speech-app.service - Speech Processing Application...
+Oct 15 09:17:24 ubuai gunicorn[8772]: INFO:app:DATABASE_URL is set and will be used for the database connection
+Oct 15 09:17:24 ubuai gunicorn[8772]: INFO:app:Database tables created successfully
+Oct 15 09:17:24 ubuai gunicorn[8772]: [2025-10-15 09:17:24 +0000] [8772] [INFO] Starting gunicorn 22.0.0
+Oct 15 09:17:24 ubuai gunicorn[8772]: [2025-10-15 09:17:24 +0000] [8772] [INFO] Listening at: http://0.0.0.0:5000 (8772)
+Oct 15 09:17:24 ubuai gunicorn[8772]: [2025-10-15 09:17:24 +0000] [8772] [INFO] Using worker: sync
+Oct 15 09:17:24 ubuai systemd[1]: Started speech-app.service - Speech Processing Application.
+Oct 15 09:17:24 ubuai gunicorn[8779]: [2025-10-15 09:17:24 +0000] [8779] [INFO] Booting worker with pid: 8779
+Oct 15 09:17:24 ubuai gunicorn[8784]: [2025-10-15 09:17:24 +0000] [8784] [INFO] Booting worker with pid: 8784
+Oct 15 09:17:24 ubuai gunicorn[8785]: [2025-10-15 09:17:24 +0000] [8785] [INFO] Booting worker with pid: 8785
+lines 1-23/23 (END)
