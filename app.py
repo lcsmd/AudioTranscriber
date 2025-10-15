@@ -211,7 +211,10 @@ def api_process():
             output_formats = request.form.get('output_formats', '["text"]')
             
             try:
-                output_formats = eval(output_formats)  # Convert string to list
+                import json
+                output_formats = json.loads(output_formats)  # Safely convert string to list
+                if not isinstance(output_formats, list):
+                    output_formats = ['text']
             except:
                 output_formats = ['text']
             
@@ -530,13 +533,15 @@ def process_job_worker(job_id, file_paths=None):
             if llm_config.get('enabled') and job.result_text:
                 job.progress_percentage = 75
                 db.session.commit()
-                logger.info(f"Starting LLM processing with type: {llm_config.get('processingType')}")
                 
                 try:
+                    user_prompt = llm_config.get('prompt', 'Summarize this text in 3-5 key points')
+                    logger.info(f"Starting LLM processing with prompt: {user_prompt[:100]}...")
+                    
                     llm_result = process_text_with_llm(
                         text=job.result_text,
-                        processing_type=llm_config.get('processingType', 'summarize'),
-                        custom_prompt=llm_config.get('customPrompt'),
+                        processing_type='custom',
+                        custom_prompt=user_prompt,
                         model=llm_config.get('model')
                     )
                     
@@ -559,7 +564,7 @@ def process_job_worker(job_id, file_paths=None):
                         # Export to Markdown if requested
                         if llm_config.get('exportMarkdown'):
                             markdown_content = f"# {job.original_filename or 'Transcript'}\n\n"
-                            markdown_content += f"**Processing Type:** {llm_config.get('processingType')}\n\n"
+                            markdown_content += f"**AI Task:** {user_prompt}\n\n"
                             markdown_content += f"## Original Transcript\n\n{job.result_text}\n\n"
                             markdown_content += f"## AI Analysis\n\n{llm_result_text}\n"
                             
@@ -573,7 +578,7 @@ def process_job_worker(job_id, file_paths=None):
                             logger.info(f"Markdown exported to {markdown_filename}")
                         
                         # Append LLM result to job result text for display
-                        job.result_text = f"{job.result_text}\n\n--- AI Analysis ({llm_config.get('processingType')}) ---\n\n{llm_result_text}"
+                        job.result_text = f"{job.result_text}\n\n--- AI Analysis ---\n\n{llm_result_text}"
                     else:
                         logger.error(f"LLM processing failed: {llm_result.get('error')}")
                         

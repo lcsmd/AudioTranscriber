@@ -189,16 +189,16 @@ function initializeLLMOptions() {
         });
     }
     
-    // Handle custom prompt visibility
-    const processingType = document.getElementById('llm-processing-type');
-    const customPromptContainer = document.getElementById('custom-prompt-container');
+    // Handle suggested prompts dropdown
+    const suggestedPrompts = document.getElementById('suggested-prompts');
+    const llmPromptBox = document.getElementById('llm-prompt');
     
-    if (processingType) {
-        processingType.addEventListener('change', function() {
-            if (this.value === 'custom') {
-                customPromptContainer.style.display = 'block';
-            } else {
-                customPromptContainer.style.display = 'none';
+    if (suggestedPrompts && llmPromptBox) {
+        suggestedPrompts.addEventListener('change', function() {
+            if (this.value) {
+                // Get the text of the selected option
+                const selectedOption = this.options[this.selectedIndex];
+                llmPromptBox.value = selectedOption.text;
             }
         });
     }
@@ -498,11 +498,12 @@ function getLLMConfig() {
         };
     }
     
+    const promptText = document.getElementById('llm-prompt').value.trim();
+    
     return {
         enabled: true,
-        processingType: document.getElementById('llm-processing-type').value,
+        prompt: promptText || 'Summarize this text in 3-5 key points',  // Default prompt if empty
         model: document.getElementById('llm-model').value,
-        customPrompt: document.getElementById('custom-llm-prompt').value,
         saveToOpenQM: document.getElementById('save-to-openqm').checked,
         exportMarkdown: document.getElementById('export-markdown').checked
     };

@@ -435,20 +435,34 @@
                     </div>
                     
                     <div id="llm-settings" class="row mt-3 d-none">
-                        <div class="col-md-4">
+                        <div class="col-md-12">
                             <div class="form-group">
-                                <label for="llm-processing-type"><strong>Processing Type:</strong></label>
-                                <select id="llm-processing-type" class="form-select">
-                                    <option value="summarize">Summarize</option>
-                                    <option value="critique">Critique & Analyze</option>
-                                    <option value="expand">Expand with Details</option>
-                                    <option value="explain">Explain Simply</option>
-                                    <option value="custom">Custom Prompt</option>
+                                <label for="suggested-prompts"><strong>Suggested Prompts (Optional):</strong></label>
+                                <select id="suggested-prompts" class="form-select">
+                                    <option value="">-- Select a suggested prompt --</option>
+                                    <option value="summarize">Summarize this text in 3-5 key points</option>
+                                    <option value="detailed_summary">Create a detailed summary with main themes and supporting details</option>
+                                    <option value="critique">Provide a critical analysis highlighting strengths, weaknesses, and areas for improvement</option>
+                                    <option value="expand">Expand on this content with additional context, examples, and detailed explanations</option>
+                                    <option value="explain">Explain this in simple, easy-to-understand language suitable for a general audience</option>
+                                    <option value="action_items">Extract all action items, tasks, and next steps from this text</option>
+                                    <option value="questions">Generate thoughtful questions that this text raises or answers</option>
+                                    <option value="key_quotes">Identify and list the most important quotes and statements</option>
+                                    <option value="technical">Provide a technical analysis with specific terminology and expert insights</option>
                                 </select>
                             </div>
                         </div>
                         
-                        <div class="col-md-4">
+                        <div class="col-md-12 mt-3">
+                            <div class="form-group">
+                                <label for="llm-prompt"><strong>What do you want the AI to do with this text?</strong></label>
+                                <textarea id="llm-prompt" class="form-control" rows="4" 
+                                          placeholder="Describe what you want the AI to do... (e.g., 'Summarize the main points', 'Extract action items', 'Provide a critical analysis', etc.)"></textarea>
+                                <small class="text-muted">You can select a suggested prompt above and edit it here, or write your own instructions</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mt-3">
                             <div class="form-group">
                                 <label for="llm-model"><strong>AI Model:</strong></label>
                                 <select id="llm-model" class="form-select">
@@ -460,7 +474,7 @@
                             </div>
                         </div>
                         
-                        <div class="col-md-4">
+                        <div class="col-md-6 mt-3">
                             <div class="form-group">
                                 <label><strong>Save Options:</strong></label>
                                 <div class="checkbox-group">
@@ -473,14 +487,6 @@
                                         <label for="export-markdown">Export as Markdown (Obsidian)</label>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-12 mt-3" id="custom-prompt-container" style="display:none;">
-                            <div class="form-group">
-                                <label for="custom-llm-prompt"><strong>Custom Prompt:</strong></label>
-                                <textarea id="custom-llm-prompt" class="form-control" rows="3" 
-                                          placeholder="Enter your custom prompt here..."></textarea>
                             </div>
                         </div>
                     </div>
