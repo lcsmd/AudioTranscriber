@@ -34,6 +34,13 @@ A comprehensive speech and document processing web application that supports:
 - Expects authentic data integration (no mock/placeholder data)
 
 ## Recent Changes
+- 2025-10-15: Implemented Ollama LLM integration for text processing (summarize, critique, expand, explain, custom)
+- 2025-10-15: Added OpenQM database client for saving transcripts/summaries to Windows server (10.1.34.103)
+- 2025-10-15: Created flexible prompt system with suggested prompts loaded from `suggested_prompts.txt`
+- 2025-10-15: User can select suggested prompts or write custom instructions for AI processing
+- 2025-10-15: Added Obsidian-compatible markdown export functionality
+- 2025-10-15: Fixed critical security vulnerability (replaced eval() with json.loads())
+- 2025-10-15: Integrated complete flow: transcription → LLM processing → database save/export
 - 2025-06-17: Added PostgreSQL database with ProcessingJob model
 - 2025-06-17: Implemented comprehensive multi-input interface
 - 2025-06-17: Added YouTube video/playlist processing
@@ -42,14 +49,7 @@ A comprehensive speech and document processing web application that supports:
 - 2025-06-17: Added multi-format output generation
 - 2025-06-17: Created real-time progress tracking system
 - 2025-06-17: Built asynchronous job processing framework
-- 2025-06-17: Expanded voice options with 8 American English voices including male options
-- 2025-06-17: Updated whisper service to point to GPU server at 10.1.10.20
-- 2025-06-17: Created comprehensive deployment guide and scripts for GPU server
 - 2025-06-17: Updated faster-whisper integration to use direct script at /mnt/bigdisk/projects/faster-whisper-gpu/smart_transcribe.py
-- 2025-06-17: Enhanced read-aloud functionality to use selected voice from dropdown with proper browser voice mapping
-- 2025-06-17: Implemented comprehensive voice quality tiers with premium Google Cloud and high-quality system voices
-- 2025-06-17: Added intelligent voice mapping with multiple fallback strategies for 220+ available voices
-- 2025-06-17: Confirmed voice selection working correctly with real-time voice switching capability
 
 ## Key Features Implemented
 - **Input Types**: Files, YouTube URLs, Text input, Documents
