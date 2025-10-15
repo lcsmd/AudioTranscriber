@@ -1,0 +1,53 @@
+lawr@ubuai:/mnt/bigdisk$ # Extract the zip
+cd /mnt/bigdisk
+unzip -q AudioTranscriber.zip -d AudioTranscriber_new
+
+# Check what was extracted
+ls -la AudioTranscriber_new/
+
+# Copy the files to the app directory
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/templates/* /var/www/speech-app/templates/
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/static/* /var/www/speech-app/static/
+sudo cp -r /mnt/bigdisk/AudioTranscriber_new/utils/* /var/www/speech-app/utils/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/app.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/main.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/models.py /var/www/speech-app/
+sudo cp /mnt/bigdisk/AudioTranscriber_new/suggested_prompts.txt /var/www/speech-app/
+
+# Clean up
+rm -rf /mnt/bigdisk/AudioTranscriber_new
+
+# Restart the service
+sudo systemctl restart speech-app
+sudo systemctl status speech-app
+total 12
+drwxrwxr-x  3 lawr lawr 4096 Oct 15 09:10 .
+drwxr-xr-x 11 lawr lawr 4096 Oct 15 09:10 ..
+drwxrwxr-x 10 lawr lawr 4096 Oct 15 09:10 AudioTranscriber
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/templates/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/static/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/utils/*': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/app.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/main.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/models.py': No such file or directory
+cp: cannot stat '/mnt/bigdisk/AudioTranscriber_new/suggested_prompts.txt': No such file or directory
+Job for speech-app.service failed because the control process exited with error code.
+See "systemctl status speech-app.service" and "journalctl -xeu speech-app.service" for details.
+● speech-app.service - Speech Processing Application
+     Loaded: loaded (/etc/systemd/system/speech-app.service; enabled; preset: enabled)
+     Active: activating (auto-restart) (Result: exit-code) since Wed 2025-10-15 09:10:22 UTC; 18ms ago
+    Process: 8250 ExecStart=/var/www/speech-app/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 --timeout 300 --preload>
+   Main PID: 8250 (code=exited, status=1/FAILURE)
+        CPU: 825ms
+
+Oct 15 09:10:22 ubuai gunicorn[8250]:                         ^^^^^^^^^^^^^
+Oct 15 09:10:22 ubuai gunicorn[8250]:   File "/usr/lib/python3.12/tempfile.py", line 447, in _gettempdir
+Oct 15 09:10:22 ubuai gunicorn[8250]:     tempdir = _get_default_tempdir()
+Oct 15 09:10:22 ubuai gunicorn[8250]:               ^^^^^^^^^^^^^^^^^^^^^^
+Oct 15 09:10:22 ubuai gunicorn[8250]:   File "/usr/lib/python3.12/tempfile.py", line 362, in _get_default_tempdir
+Oct 15 09:10:22 ubuai gunicorn[8250]:     raise FileNotFoundError(_errno.ENOENT,
+Oct 15 09:10:22 ubuai gunicorn[8250]: FileNotFoundError: [Errno 2] No usable temporary directory found in ['/var/www/spee>
+Oct 15 09:10:22 ubuai systemd[1]: speech-app.service: Main process exited, code=exited, status=1/FAILURE
+Oct 15 09:10:22 ubuai systemd[1]: speech-app.service: Failed with result 'exit-code'.
+Oct 15 09:10:22 ubuai systemd[1]: Failed to start speech-app.service - Speech Processing Application.
+lines 1-17/17 (END)
