@@ -230,7 +230,8 @@ async function processYouTubeURL(url) {
         source_url: url,
         target_language: config.language,
         output_formats: config.formats,
-        voice_id: config.voice
+        voice_id: config.voice,
+        youtubeOptions: config.youtubeOptions || {}
     };
     
     try {
