@@ -507,6 +507,9 @@ function getProcessingConfig() {
         // Get LLM processing options
         const llmConfig = getLLMConfig();
         
+        // Track if AI is enabled for this transcription
+        aiWasEnabledDuringTranscription = llmConfig.enabled;
+        
         return {
             language: language,
             voice: 'google_en', // Default voice for transcription
@@ -539,8 +542,17 @@ function getLLMConfig() {
 }
 
 function showProgress() {
+    // Reset AI flag when starting new processing
+    aiWasEnabledDuringTranscription = false;
+    
     document.getElementById('progress-section').classList.remove('d-none');
     document.getElementById('results-section').classList.add('d-none');
+    
+    // Show processing options again for new transcription
+    const processingOptionsSection = document.getElementById('processing-options-section');
+    if (processingOptionsSection) {
+        processingOptionsSection.classList.remove('d-none');
+    }
 }
 
 function hideProgress() {
@@ -558,12 +570,19 @@ function updateProgress(percentage, message) {
 
 // Global variable to store the current transcript
 let currentTranscript = null;
+let aiWasEnabledDuringTranscription = false;
 
 function showResults(jobData) {
     const resultsSection = document.getElementById('results-section');
     const resultContent = document.getElementById('result-content');
     const resultDownloads = document.getElementById('result-downloads');
     const postTranscriptionAI = document.getElementById('post-transcription-ai');
+    const processingOptionsSection = document.getElementById('processing-options-section');
+    
+    // Hide processing options section after results are shown
+    if (processingOptionsSection) {
+        processingOptionsSection.classList.add('d-none');
+    }
     
     // Show results section
     resultsSection.classList.remove('d-none');
@@ -582,10 +601,11 @@ function showResults(jobData) {
             </div>
         `;
         
-        // Show AI processing button for transcription jobs (not TTS)
-        // If job has result_text and it's from transcription (not TTS which creates audio files)
+        // Show AI processing button ONLY if:
+        // 1. This is a transcription job (not TTS)
+        // 2. AI was NOT enabled during the initial transcription
         const isTTSJob = jobData.result_files && jobData.result_files.some(f => f.endsWith('.mp3') || f.endsWith('.wav'));
-        if (!isTTSJob && postTranscriptionAI) {
+        if (!isTTSJob && !aiWasEnabledDuringTranscription && postTranscriptionAI) {
             postTranscriptionAI.classList.remove('d-none');
         }
     }

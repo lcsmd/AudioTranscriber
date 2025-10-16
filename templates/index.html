@@ -243,20 +243,10 @@
                 <h5><i class="fas fa-check-circle text-success"></i> Processing Complete</h5>
                 <div id="result-content"></div>
                 <div id="result-downloads" class="result-files"></div>
-                
-                <!-- AI Processing Button (appears after transcription) -->
-                <div id="post-transcription-ai" class="mt-4 d-none">
-                    <hr>
-                    <h6><i class="fas fa-brain"></i> Want to process this transcript with AI?</h6>
-                    <button id="trigger-ai-processing" class="btn btn-primary mt-2">
-                        <i class="fas fa-magic"></i> Process with AI
-                    </button>
-                    <p class="text-muted mt-2"><small>Scroll down to configure AI processing options, then click this button</small></p>
-                </div>
             </div>
             
             <!-- Configuration Section -->
-            <div class="config-section">
+            <div id="processing-options-section" class="config-section">
                 <h4><i class="fas fa-cogs"></i> Processing Options</h4>
                 
                 <!-- Options for Document/Text Input (TTS) -->
@@ -510,6 +500,18 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- AI Processing Button (appears after transcription if AI was not used) -->
+                <div id="post-transcription-ai" class="mt-4 d-none">
+                    <hr>
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-brain"></i> Want to process this transcript with AI?</h6>
+                        <p class="mb-2"><small>Configure the AI options above, then click the button below to process your transcript.</small></p>
+                        <button id="trigger-ai-processing" class="btn btn-primary">
+                            <i class="fas fa-magic"></i> Process with AI
+                        </button>
                     </div>
                 </div>
             </div>
