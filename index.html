@@ -1,0 +1,516 @@
+{% extends "layout.html" %}
+
+{% block extra_head %}
+<style>
+    .input-section {
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: white;
+    }
+    
+    .input-tabs {
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 20px;
+    }
+    
+    .input-tab {
+        padding: 10px 20px;
+        border: none;
+        background: none;
+        color: #6c757d;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s;
+    }
+    
+    .input-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+    
+    .input-content {
+        display: none;
+    }
+    
+    .input-content.active {
+        display: block;
+    }
+    
+    .drop-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 10px;
+        padding: 40px 20px;
+        text-align: center;
+        background-color: #f8f9fa;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .drop-area:hover, .drop-area.dragover {
+        border-color: var(--primary-color);
+        background-color: rgba(74, 109, 167, 0.05);
+    }
+    
+    .file-icon {
+        font-size: 3rem;
+        color: var(--secondary-color);
+        margin-bottom: 15px;
+    }
+    
+    .text-area {
+        min-height: 200px;
+        border-radius: 8px;
+    }
+    
+    .url-input {
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        font-size: 14px;
+    }
+    
+    .config-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .progress-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+        margin-top: 20px;
+    }
+    
+    .result-section {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .result-files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .result-file {
+        background: var(--light-color);
+        padding: 8px 15px;
+        border-radius: 5px;
+        text-decoration: none;
+        color: var(--primary-color);
+        transition: all 0.3s;
+    }
+    
+    .result-file:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-12">
+            <h1 class="text-center mb-4">Speech Processing Service</h1>
+            
+            <!-- Input Section -->
+            <div class="input-section">
+                <div class="input-tabs">
+                    <button class="input-tab active" data-tab="file">
+                        <i class="fas fa-file-audio"></i> Files
+                    </button>
+                    <button class="input-tab" data-tab="youtube">
+                        <i class="fab fa-youtube"></i> YouTube
+                    </button>
+                    <button class="input-tab" data-tab="text">
+                        <i class="fas fa-keyboard"></i> Text
+                    </button>
+                    <button class="input-tab" data-tab="document">
+                        <i class="fas fa-file-alt"></i> Documents
+                    </button>
+                </div>
+                
+                <!-- File Upload Tab -->
+                <div id="file-content" class="input-content active">
+                    <h4><i class="fas fa-cloud-upload-alt"></i> Upload Audio/Video Files</h4>
+                    <p class="text-muted">Support for MP3, WAV, MP4, MOV files</p>
+                    
+                    <div id="file-drop-area" class="drop-area">
+                        <div class="file-icon">
+                            <i class="fas fa-file-audio"></i>
+                        </div>
+                        <div class="file-text">
+                            <strong>Choose files</strong> or drag them here
+                        </div>
+                        <div class="file-types">
+                            Supported: MP3, WAV, MP4, MOV
+                        </div>
+                        <input type="file" id="file-input" multiple accept=".mp3,.wav,.mp4,.mov" style="display: none;">
+                    </div>
+                </div>
+                
+                <!-- YouTube Tab -->
+                <div id="youtube-content" class="input-content">
+                    <h4><i class="fab fa-youtube"></i> YouTube Videos & Playlists</h4>
+                    <p class="text-muted">Enter a YouTube video or playlist URL</p>
+                    
+                    <div class="form-group">
+                        <input type="url" id="youtube-url" class="form-control url-input" 
+                               placeholder="https://www.youtube.com/watch?v=... or playlist URL">
+                    </div>
+                    <button id="youtube-process" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Process YouTube Content
+                    </button>
+                </div>
+                
+                <!-- Text Tab -->
+                <div id="text-content" class="input-content">
+                    <h4><i class="fas fa-keyboard"></i> Text to Speech</h4>
+                    <p class="text-muted">Enter text to convert to speech</p>
+                    
+                    <div class="form-group">
+                        <textarea id="text-input" class="form-control text-area" 
+                                  placeholder="Enter your text here for speech synthesis..."></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button id="text-process" class="btn btn-primary">
+                            <i class="fas fa-volume-up"></i> Generate Speech
+                        </button>
+                        <button id="test-speech" class="btn btn-outline-secondary ms-2" onclick="testSpeechSynthesis()">
+                            <i class="fas fa-play"></i> Test Audio
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Document Tab -->
+                <div id="document-content" class="input-content">
+                    <h4><i class="fas fa-file-alt"></i> Document Processing</h4>
+                    <p class="text-muted">Upload PDF, DOCX, or TXT files for text extraction</p>
+                    
+                    <div id="document-drop-area" class="drop-area">
+                        <div class="file-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="file-text">
+                            <strong>Choose documents</strong> or drag them here
+                        </div>
+                        <div class="file-types">
+                            Supported: PDF, DOCX, TXT
+                        </div>
+                        <input type="file" id="document-input" multiple accept=".pdf,.docx,.txt" style="display: none;">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Progress Section (Moved Higher for Visibility) -->
+            <div id="progress-section" class="progress-container d-none">
+                <h5><i class="fas fa-spinner fa-spin"></i> Processing...</h5>
+                <div class="progress mb-3">
+                    <div id="main-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         style="width: 0%">0%</div>
+                </div>
+                <div id="progress-status">Initializing...</div>
+            </div>
+            
+            <!-- Results Section (Moved Higher for Visibility) -->
+            <div id="results-section" class="result-section d-none">
+                <h5><i class="fas fa-check-circle text-success"></i> Processing Complete</h5>
+                <div id="result-content"></div>
+                <div id="result-downloads" class="result-files"></div>
+            </div>
+            
+            <!-- Configuration Section -->
+            <div class="config-section">
+                <h4><i class="fas fa-cogs"></i> Processing Options</h4>
+                
+                <!-- Options for Document/Text Input (TTS) -->
+                <div id="tts-options" class="config-group d-none">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="tts-language"><strong>Language:</strong></label>
+                                <select id="tts-language" class="form-select">
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="fr">French</option>
+                                    <option value="de">German</option>
+                                    <option value="it">Italian</option>
+                                    <option value="pt">Portuguese</option>
+                                    <option value="ru">Russian</option>
+                                    <option value="ja">Japanese</option>
+                                    <option value="ko">Korean</option>
+                                    <option value="zh">Chinese</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="tts-voice"><strong>Voice:</strong></label>
+                                <select id="tts-voice" class="form-select">
+                                    <optgroup label="Premium Quality (Google Cloud)">
+                                        <option value="google_en_us_female">🌟 Google US English (Female) - Neural</option>
+                                        <option value="google_en_us_male">🌟 Google US English (Male) - Neural</option>
+                                        <option value="google_en_uk_female">🌟 Google UK English (Female) - Neural</option>
+                                        <option value="google_en_uk_male">🌟 Google UK English (Male) - Neural</option>
+                                    </optgroup>
+                                    <optgroup label="High Quality (System)">
+                                        <option value="system_alex">Alex (Male) - Premium US Voice</option>
+                                        <option value="system_samantha">Samantha (Female) - Premium US Voice</option>
+                                        <option value="system_victoria">Victoria (Female) - Professional US Voice</option>
+                                        <option value="system_daniel">Daniel (Male) - Premium UK Voice</option>
+                                        <option value="system_kate">Kate (Female) - Premium UK Voice</option>
+                                        <option value="system_karen">Karen (Female) - Australian Voice</option>
+                                    </optgroup>
+                                    <optgroup label="Standard Quality">
+                                        <option value="google_en_us_wavenet_a">US WaveNet A (Female)</option>
+                                        <option value="google_en_us_wavenet_b">US WaveNet B (Male)</option>
+                                        <option value="google_en_us_wavenet_c">US WaveNet C (Female)</option>
+                                        <option value="google_en_us_wavenet_d">US WaveNet D (Male)</option>
+                                        <option value="google_en_us_neural2_a">US Neural2 A (Female)</option>
+                                        <option value="google_en_us_neural2_c">US Neural2 C (Male)</option>
+                                    </optgroup>
+                                    <optgroup label="More Premium Voices">
+                                        <option value="system_allison">Allison (Female) - Premium US Voice</option>
+                                        <option value="system_ava">Ava (Female) - Modern US Voice</option>
+                                        <option value="system_fred">Fred (Male) - Deep US Voice</option>
+                                        <option value="system_oliver">Oliver (Male) - Premium UK Voice</option>
+                                        <option value="system_susan">Susan (Female) - Professional Voice</option>
+                                        <option value="system_tom">Tom (Male) - Clear US Voice</option>
+                                        <option value="system_zoe">Zoe (Female) - Modern Voice</option>
+                                        <option value="system_aaron">Aaron (Male) - Professional Voice</option>
+                                    </optgroup>
+                                    <optgroup label="International English">
+                                        <option value="google_en_au">Google Australia (Female)</option>
+                                        <option value="google_en_ca">Google Canada (Female)</option>
+                                        <option value="system_stephanie">Stephanie (Female) - UK Voice</option>
+                                        <option value="system_tessa">Tessa (Female) - South African Voice</option>
+                                        <option value="system_catherine">Catherine (Female) - Australian Voice</option>
+                                        <option value="system_moira">Moira (Female) - Irish Voice</option>
+                                    </optgroup>
+                                    <optgroup label="Character/Novelty Voices">
+                                        <option value="system_whisper">Whisper (Quiet Voice)</option>
+                                        <option value="system_superstar">Superstar (Dramatic Voice)</option>
+                                        <option value="system_trinoids">Trinoids (Robot Voice)</option>
+                                        <option value="system_zarvox">Zarvox (Sci-Fi Voice)</option>
+                                        <option value="system_wobble">Wobble (Fun Voice)</option>
+                                    </optgroup>
+                                    <optgroup label="Other Languages">
+                                        <option value="google_es">Google Spanish (Female)</option>
+                                        <option value="google_es_male">Google Spanish (Male)</option>
+                                        <option value="google_fr">Google French (Female)</option>
+                                        <option value="google_fr_male">Google French (Male)</option>
+                                        <option value="google_de">Google German (Female)</option>
+                                        <option value="system_thomas">Thomas (Male) - French Voice</option>
+                                        <option value="system_marie">Marie (Female) - French Voice</option>
+                                        <option value="system_anna">Anna (Female) - German Voice</option>
+                                        <option value="system_jorge">Jorge (Male) - Spanish Voice</option>
+                                        <option value="google_de_male">Google German (Male)</option>
+                                    </optgroup>
+                                    <optgroup label="System Voices">
+                                        <option value="system_default">System Default Voice</option>
+                                        <option value="system_male">System Male Voice</option>
+                                        <option value="system_female">System Female Voice</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><strong>Audio Options:</strong></label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="read-aloud-now" value="read_aloud">
+                                        <label for="read-aloud-now">Read Aloud Now</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="auto-create-mp3" value="create_mp3" checked>
+                                        <label for="auto-create-mp3">Automatically Create MP3 File</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Options for Audio/Video/YouTube Input (Transcription) -->
+                <div id="transcription-options" class="config-group">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="output-language"><strong>Output Language:</strong></label>
+                                <select id="output-language" class="form-select">
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="fr">French</option>
+                                    <option value="de">German</option>
+                                    <option value="it">Italian</option>
+                                    <option value="pt">Portuguese</option>
+                                    <option value="ru">Russian</option>
+                                    <option value="ja">Japanese</option>
+                                    <option value="ko">Korean</option>
+                                    <option value="zh">Chinese</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label><strong>File Formats:</strong></label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="format-text" value="text" checked>
+                                        <label for="format-text">Text</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="format-markdown" value="markdown">
+                                        <label for="format-markdown">Markdown</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="format-word" value="word">
+                                        <label for="format-word">Word</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="format-pdf" value="pdf">
+                                        <label for="format-pdf">PDF</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label><strong>Processing Options:</strong></label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="live-text-display" value="live_display" checked>
+                                        <label for="live-text-display">Display Text Live</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- YouTube-specific options -->
+                            <div id="youtube-transcript-options" class="form-group d-none">
+                                <label><strong>YouTube Processing:</strong></label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="pull-transcript" value="pull_transcript" checked>
+                                        <label for="pull-transcript">Pull Existing Transcript</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="transcribe-audio" value="transcribe_audio">
+                                        <label for="transcribe-audio">Transcribe from Audio</label>
+                                    </div>
+                                </div>
+                                <small class="text-muted">If transcript unavailable, will automatically transcribe audio</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LLM Processing Options -->
+            <div id="llm-options" class="config-section card mt-4">
+                <h4><i class="fas fa-brain"></i> AI Processing (Optional)</h4>
+                <p class="text-muted"><small>Process transcribed text with AI - can be used before or after viewing the transcript</small></p>
+                <div class="config-group">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="enable-llm-processing" value="enable_llm">
+                                    <label for="enable-llm-processing"><strong>Process text with AI (Ollama)</strong></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="llm-settings" class="row mt-3 d-none">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="suggested-prompts"><strong>Suggested Prompts (Optional):</strong></label>
+                                <select id="suggested-prompts" class="form-select">
+                                    <option value="">-- Select a suggested prompt --</option>
+                                    <!-- Prompts loaded dynamically from suggested_prompts.txt -->
+                                </select>
+                                <small class="text-muted">Edit suggested_prompts.txt to customize these options</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-12 mt-3">
+                            <div class="form-group">
+                                <label for="llm-prompt"><strong>What do you want the AI to do with this text?</strong></label>
+                                <textarea id="llm-prompt" class="form-control" rows="4" 
+                                          placeholder="Describe what you want the AI to do... (e.g., 'Summarize the main points', 'Extract action items', 'Provide a critical analysis', etc.)"></textarea>
+                                <small class="text-muted">You can select a suggested prompt above and edit it here, or write your own instructions</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mt-3">
+                            <div class="form-group">
+                                <label for="llm-model"><strong>AI Model:</strong></label>
+                                <select id="llm-model" class="form-select">
+                                    <option value="llama2">Llama 2</option>
+                                    <option value="llama3">Llama 3</option>
+                                    <option value="mistral">Mistral</option>
+                                    <option value="codellama">Code Llama</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mt-3">
+                            <div class="form-group">
+                                <label><strong>Save Options:</strong></label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="save-to-openqm" value="save_openqm">
+                                        <label for="save-to-openqm">Save to OpenQM Database</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="export-markdown" value="export_markdown">
+                                        <label for="export-markdown">Export as Markdown (Obsidian)</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status Messages -->
+            <div id="status-messages"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/comprehensive-processor.js') }}"></script>
+{% endblock %}
