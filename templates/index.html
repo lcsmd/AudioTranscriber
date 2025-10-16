@@ -228,6 +228,23 @@
                 </div>
             </div>
             
+            <!-- Progress Section (Moved Higher for Visibility) -->
+            <div id="progress-section" class="progress-container d-none">
+                <h5><i class="fas fa-spinner fa-spin"></i> Processing...</h5>
+                <div class="progress mb-3">
+                    <div id="main-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         style="width: 0%">0%</div>
+                </div>
+                <div id="progress-status">Initializing...</div>
+            </div>
+            
+            <!-- Results Section (Moved Higher for Visibility) -->
+            <div id="results-section" class="result-section d-none">
+                <h5><i class="fas fa-check-circle text-success"></i> Processing Complete</h5>
+                <div id="result-content"></div>
+                <div id="result-downloads" class="result-files"></div>
+            </div>
+            
             <!-- Configuration Section -->
             <div class="config-section">
                 <h4><i class="fas fa-cogs"></i> Processing Options</h4>
@@ -422,6 +439,7 @@
             <!-- LLM Processing Options -->
             <div id="llm-options" class="config-section card mt-4">
                 <h4><i class="fas fa-brain"></i> AI Processing (Optional)</h4>
+                <p class="text-muted"><small>Process transcribed text with AI - can be used before or after viewing the transcript</small></p>
                 <div class="config-group">
                     <div class="row">
                         <div class="col-md-12">
@@ -484,23 +502,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Progress Section -->
-            <div id="progress-section" class="progress-container d-none">
-                <h5><i class="fas fa-spinner fa-spin"></i> Processing...</h5>
-                <div class="progress mb-3">
-                    <div id="main-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                         style="width: 0%">0%</div>
-                </div>
-                <div id="progress-status">Initializing...</div>
-            </div>
-            
-            <!-- Results Section -->
-            <div id="results-section" class="result-section d-none">
-                <h5><i class="fas fa-check-circle text-success"></i> Processing Complete</h5>
-                <div id="result-content"></div>
-                <div id="result-downloads" class="result-files"></div>
             </div>
             
             <!-- Status Messages -->
