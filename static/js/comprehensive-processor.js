@@ -36,7 +36,8 @@ function setStep(stepNumber) {
     }
     
     // Show/hide cards based on step
-    document.getElementById('input-selection-card').classList.toggle('hidden', stepNumber > 1);
+    // Keep input-selection-card visible in steps 1 and 2 (so URL/text inputs remain visible)
+    document.getElementById('input-selection-card').classList.toggle('hidden', stepNumber > 2);
     document.getElementById('configuration-card').classList.toggle('hidden', stepNumber !== 2);
     document.getElementById('process-card').classList.toggle('hidden', stepNumber !== 3);
     document.getElementById('results-card').classList.toggle('hidden', stepNumber !== 4);
@@ -68,6 +69,7 @@ function initializeInputSelection() {
             
             // Progress to configuration step
             setTimeout(() => {
+                setStep(2);
                 document.getElementById('configuration-card').classList.remove('hidden');
                 document.getElementById('configuration-card').scrollIntoView({ behavior: 'smooth' });
             }, 300);
