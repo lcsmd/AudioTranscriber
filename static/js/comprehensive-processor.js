@@ -1,258 +1,321 @@
-/**
- * Comprehensive Speech Processing JavaScript
- * Handles multiple input types, progress tracking, and various output formats
- */
+// Application State
+const appState = {
+    currentStep: 1,
+    inputType: null,
+    inputData: null,
+    processingMode: null, // 'transcription' or 'tts'
+    currentJobId: null,
+    currentTranscript: null,
+    aiUsedInInitialProcess: false
+};
 
+// Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tab switching
-    initializeTabs();
-    
-    // Initialize drag and drop for file inputs
-    initializeFileDropZones();
-    
-    // Initialize processing buttons
-    initializeProcessingButtons();
-    
-    // Initialize progress tracking
-    initializeProgressTracking();
-    
-    // Initialize result handling
-    initializeResultHandling();
-    
-    // Initialize LLM options
-    initializeLLMOptions();
-    
-    // Initialize post-transcription AI processing
-    initializePostTranscriptionAI();
+    initializeInputSelection();
+    initializeAccordions();
+    initializeAIToggle();
+    initializeProcessButton();
+    initializePostAI();
+    loadSuggestedPrompts();
 });
 
-function initializeTabs() {
-    const tabs = document.querySelectorAll('.input-tab');
-    const contents = document.querySelectorAll('.input-content');
+// Step Management
+function setStep(stepNumber) {
+    appState.currentStep = stepNumber;
     
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const targetTab = this.getAttribute('data-tab');
+    // Update step indicator
+    for (let i = 1; i <= 4; i++) {
+        const step = document.getElementById(`step-${i}`);
+        step.classList.remove('active', 'completed');
+        
+        if (i < stepNumber) {
+            step.classList.add('completed');
+        } else if (i === stepNumber) {
+            step.classList.add('active');
+        }
+    }
+    
+    // Show/hide cards based on step
+    document.getElementById('input-selection-card').classList.toggle('hidden', stepNumber > 1);
+    document.getElementById('configuration-card').classList.toggle('hidden', stepNumber !== 2);
+    document.getElementById('process-card').classList.toggle('hidden', stepNumber !== 3);
+    document.getElementById('results-card').classList.toggle('hidden', stepNumber !== 4);
+}
+
+// Input Selection
+function initializeInputSelection() {
+    const inputCards = document.querySelectorAll('.input-type-card');
+    const inputAreas = document.querySelectorAll('.input-area');
+    
+    inputCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const type = this.dataset.type;
             
-            // Remove active class from all tabs and contents
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
+            // Update selection
+            inputCards.forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
             
-            // Add active class to clicked tab and corresponding content
-            this.classList.add('active');
-            document.getElementById(targetTab + '-content').classList.add('active');
+            // Show appropriate input area
+            inputAreas.forEach(area => area.classList.remove('active'));
+            document.getElementById(`${type}-input-area`).classList.add('active');
             
-            // Update configuration options based on selected tab
-            updateConfigurationOptions(targetTab);
+            // Update app state
+            appState.inputType = type;
+            appState.processingMode = (type === 'text') ? 'tts' : 'transcription';
+            
+            // Load appropriate configuration
+            loadConfiguration(type);
+            
+            // Progress to configuration step
+            setTimeout(() => {
+                setStep(2);
+                document.getElementById('configuration-card').classList.remove('hidden');
+                document.getElementById('configuration-card').scrollIntoView({ behavior: 'smooth' });
+            }, 300);
         });
     });
     
-    // Initialize with file tab active
-    updateConfigurationOptions('file');
-}
-
-function updateConfigurationOptions(inputType) {
-    const ttsOptions = document.getElementById('tts-options');
-    const transcriptionOptions = document.getElementById('transcription-options');
-    const youtubeTranscriptOptions = document.getElementById('youtube-transcript-options');
-    
-    if (inputType === 'text' || inputType === 'document') {
-        // Show TTS options for text and document inputs
-        ttsOptions.classList.remove('d-none');
-        transcriptionOptions.classList.add('d-none');
-        if (youtubeTranscriptOptions) {
-            youtubeTranscriptOptions.classList.add('d-none');
-        }
-    } else {
-        // Show transcription options for file, youtube inputs
-        ttsOptions.classList.add('d-none');
-        transcriptionOptions.classList.remove('d-none');
-        
-        // Show YouTube-specific options only for YouTube input
-        if (youtubeTranscriptOptions) {
-            if (inputType === 'youtube') {
-                youtubeTranscriptOptions.classList.remove('d-none');
-            } else {
-                youtubeTranscriptOptions.classList.add('d-none');
-            }
-        }
-    }
-}
-
-function initializeFileDropZones() {
-    // File upload drop zone
-    const fileDropArea = document.getElementById('file-drop-area');
+    // File upload handling
+    const fileDropZone = document.getElementById('file-drop-zone');
     const fileInput = document.getElementById('file-input');
     
-    // Document upload drop zone
-    const documentDropArea = document.getElementById('document-drop-area');
-    const documentInput = document.getElementById('document-input');
+    fileDropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileSelect);
     
-    setupDropZone(fileDropArea, fileInput);
-    setupDropZone(documentDropArea, documentInput);
-}
-
-function setupDropZone(dropArea, fileInput) {
-    // Prevent default drag behaviors
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-        document.body.addEventListener(eventName, preventDefaults, false);
-    });
-    
-    // Highlight drop area when item is dragged over it
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, highlight, false);
-    });
-    
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, unhighlight, false);
-    });
-    
-    // Handle dropped files
-    dropArea.addEventListener('drop', handleDrop, false);
-    
-    // Handle file input change
-    fileInput.addEventListener('change', handleFileSelect, false);
-    
-    // Handle click to open file dialog
-    dropArea.addEventListener('click', () => fileInput.click());
-    
-    function preventDefaults(e) {
+    // Drag and drop
+    fileDropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-    }
-    
-    function highlight(e) {
-        dropArea.classList.add('dragover');
-    }
-    
-    function unhighlight(e) {
-        dropArea.classList.remove('dragover');
-    }
-    
-    function handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        handleFiles(files);
-    }
-    
-    function handleFileSelect(e) {
-        const files = e.target.files;
-        handleFiles(files);
-    }
-    
-    function handleFiles(files) {
-        const inputType = fileInput.id === 'file-input' ? 'audio-video' : 'document';
-        processFiles(Array.from(files), inputType);
-    }
-}
-
-function initializeProcessingButtons() {
-    // YouTube processing
-    document.getElementById('youtube-process').addEventListener('click', function() {
-        const url = document.getElementById('youtube-url').value.trim();
-        if (!url) {
-            showMessage('Please enter a YouTube URL', 'warning');
-            return;
-        }
-        processYouTubeURL(url);
+        fileDropZone.classList.add('drag-over');
     });
     
-    // Text to speech processing
-    document.getElementById('text-process').addEventListener('click', function() {
-        const text = document.getElementById('text-input').value.trim();
-        if (!text) {
-            showMessage('Please enter text for speech synthesis', 'warning');
-            return;
+    fileDropZone.addEventListener('dragleave', () => {
+        fileDropZone.classList.remove('drag-over');
+    });
+    
+    fileDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileDropZone.classList.remove('drag-over');
+        fileInput.files = e.dataTransfer.files;
+        handleFileSelect();
+    });
+    
+    // Document upload
+    const docDropZone = document.getElementById('document-drop-zone');
+    const docInput = document.getElementById('document-input');
+    
+    docDropZone.addEventListener('click', () => docInput.click());
+    docInput.addEventListener('change', handleDocumentSelect);
+}
+
+function handleFileSelect() {
+    const files = document.getElementById('file-input').files;
+    const fileList = document.getElementById('file-list');
+    
+    if (files.length > 0) {
+        appState.inputData = files;
+        fileList.innerHTML = `<div class="alert alert-info">
+            <i class="fas fa-check-circle"></i> ${files.length} file(s) selected
+        </div>`;
+        setStep(2);
+        document.getElementById('process-card').classList.remove('hidden');
+    }
+}
+
+function handleDocumentSelect() {
+    const file = document.getElementById('document-input').files[0];
+    const docInfo = document.getElementById('document-info');
+    
+    if (file) {
+        appState.inputData = file;
+        docInfo.innerHTML = `<div class="alert alert-info">
+            <i class="fas fa-check-circle"></i> ${file.name}
+        </div>`;
+        setStep(2);
+        document.getElementById('process-card').classList.remove('hidden');
+    }
+}
+
+// Configuration Loading
+function loadConfiguration(inputType) {
+    const basicOptions = document.getElementById('basic-options');
+    const outputAccordion = document.getElementById('output-accordion');
+    
+    if (inputType === 'text') {
+        // TTS configuration
+        basicOptions.innerHTML = `
+            <div class="form-group">
+                <label class="form-label">Language</label>
+                <select id="tts-language" class="form-select">
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Voice</label>
+                <select id="tts-voice" class="form-select">
+                    <optgroup label="Google Cloud Voices">
+                        <option value="google_en_us_female">US English (Female)</option>
+                        <option value="google_en_us_male">US English (Male)</option>
+                        <option value="google_en_uk_female">UK English (Female)</option>
+                        <option value="google_en_uk_male">UK English (Male)</option>
+                    </optgroup>
+                </select>
+            </div>
+        `;
+        outputAccordion.classList.add('hidden');
+        document.getElementById('process-btn-text').textContent = 'Generate Speech';
+    } else {
+        // Transcription configuration
+        basicOptions.innerHTML = `
+            <div class="form-group">
+                <label class="form-label">Output Language</label>
+                <select id="output-language" class="form-select">
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                </select>
+            </div>
+        `;
+        
+        if (inputType === 'youtube') {
+            basicOptions.innerHTML += `
+                <div class="form-group">
+                    <label class="form-label">YouTube Options</label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="pull-transcript" checked>
+                        <span>Use existing transcript (if available)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                        <input type="checkbox" id="transcribe-audio">
+                        <span>Transcribe from audio</span>
+                    </label>
+                </div>
+            `;
         }
-        processTextToSpeech(text);
+        
+        outputAccordion.classList.remove('hidden');
+        document.getElementById('process-btn-text').textContent = 'Start Transcription';
+    }
+    
+    setStep(2);
+    document.getElementById('process-card').classList.remove('hidden');
+}
+
+// Accordion Functionality
+function initializeAccordions() {
+    const accordionHeaders = document.querySelectorAll('.accordion-header');
+    
+    accordionHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const item = this.parentElement;
+            const wasExpanded = item.classList.contains('expanded');
+            
+            // Toggle expansion
+            item.classList.toggle('expanded');
+        });
     });
 }
 
-function initializeProgressTracking() {
-    // Progress tracking will be handled during processing
+// AI Toggle
+function initializeAIToggle() {
+    const aiToggle = document.getElementById('enable-ai-processing');
+    const aiSettings = document.getElementById('ai-settings');
+    
+    aiToggle.addEventListener('change', function() {
+        if (this.checked) {
+            aiSettings.classList.remove('hidden');
+        } else {
+            aiSettings.classList.add('hidden');
+        }
+    });
+    
+    // Suggested prompts
+    const suggestedPrompts = document.getElementById('suggested-prompts');
+    const aiPrompt = document.getElementById('ai-prompt');
+    
+    suggestedPrompts.addEventListener('change', function() {
+        if (this.value) {
+            aiPrompt.value = this.options[this.selectedIndex].text;
+        }
+    });
 }
 
-function initializeResultHandling() {
-    // Result handling will be setup during processing completion
-}
-
+// Load Suggested Prompts
 async function loadSuggestedPrompts() {
     try {
         const response = await fetch('/api/suggested-prompts');
         const data = await response.json();
         
-        const suggestedPrompts = document.getElementById('suggested-prompts');
-        if (suggestedPrompts && data.prompts) {
-            // Clear existing options except the first one
-            suggestedPrompts.innerHTML = '<option value="">-- Select a suggested prompt --</option>';
-            
-            // Add prompts from the file
-            data.prompts.forEach((prompt, index) => {
-                const option = document.createElement('option');
-                option.value = `prompt_${index}`;
-                option.textContent = prompt;
-                suggestedPrompts.appendChild(option);
-            });
-        }
+        const select = document.getElementById('suggested-prompts');
+        data.prompts.forEach(prompt => {
+            const option = document.createElement('option');
+            option.value = prompt;
+            option.textContent = prompt;
+            select.appendChild(option);
+        });
     } catch (error) {
-        console.error('Error loading suggested prompts:', error);
+        console.error('Failed to load suggested prompts:', error);
     }
 }
 
-function initializeLLMOptions() {
-    // Load suggested prompts from file
-    loadSuggestedPrompts();
+// Process Button
+function initializeProcessButton() {
+    const processBtn = document.getElementById('process-btn');
     
-    // Handle LLM enable/disable
-    const enableLLM = document.getElementById('enable-llm-processing');
-    const llmSettings = document.getElementById('llm-settings');
-    
-    if (enableLLM) {
-        enableLLM.addEventListener('change', function() {
-            if (this.checked) {
-                llmSettings.classList.remove('d-none');
-            } else {
-                llmSettings.classList.add('d-none');
-            }
-        });
-    }
-    
-    // Handle suggested prompts dropdown
-    const suggestedPrompts = document.getElementById('suggested-prompts');
-    const llmPromptBox = document.getElementById('llm-prompt');
-    
-    if (suggestedPrompts && llmPromptBox) {
-        suggestedPrompts.addEventListener('change', function() {
-            if (this.value) {
-                // Get the text of the selected option
-                const selectedOption = this.options[this.selectedIndex];
-                llmPromptBox.value = selectedOption.text;
-            }
-        });
-    }
-}
-
-async function processFiles(files, inputType) {
-    if (files.length === 0) return;
-    
-    showProgress();
-    updateProgress(10, 'Preparing files...');
-    
-    const formData = new FormData();
-    const config = getProcessingConfig();
-    
-    // Add files to form data
-    files.forEach((file, index) => {
-        formData.append(`files`, file);
+    processBtn.addEventListener('click', async function() {
+        // Track if AI is being used
+        appState.aiUsedInInitialProcess = document.getElementById('enable-ai-processing').checked;
+        
+        // Show progress
+        showProgress();
+        
+        // Process based on input type
+        if (appState.inputType === 'file') {
+            await processFiles();
+        } else if (appState.inputType === 'youtube') {
+            await processYouTube();
+        } else if (appState.inputType === 'text') {
+            await processText();
+        } else if (appState.inputType === 'document') {
+            await processDocument();
+        }
     });
     
-    // Add configuration
-    formData.append('input_type', inputType);
+    // Reset button
+    document.getElementById('reset-btn').addEventListener('click', function() {
+        location.reload();
+    });
+}
+
+// Processing Functions
+async function processFiles() {
+    const formData = new FormData();
+    const files = appState.inputData;
+    
+    Array.from(files).forEach(file => {
+        formData.append('files', file);
+    });
+    
+    const config = getConfiguration();
+    formData.append('input_type', 'file');
     formData.append('target_language', config.language);
     formData.append('output_formats', JSON.stringify(config.formats));
-    formData.append('voice_id', config.voice);
-    formData.append('llm_config', JSON.stringify(config.llm));
+    formData.append('llm_config', JSON.stringify(config.ai));
     
     try {
         updateProgress(30, 'Uploading files...');
@@ -262,1025 +325,339 @@ async function processFiles(files, inputType) {
             body: formData
         });
         
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-        }
-        
         const result = await response.json();
         
         if (result.success) {
-            updateProgress(50, 'Processing started...');
-            const config = getProcessingConfig();
-            pollJobStatus(result.job_id, config.liveDisplay);
+            appState.currentJobId = result.job_id;
+            pollJobStatus(result.job_id);
         } else {
             throw new Error(result.error || 'Processing failed');
         }
-        
     } catch (error) {
-        hideProgress();
-        showMessage(`Error: ${error.message}`, 'danger');
+        showError(error.message);
     }
 }
 
-async function processYouTubeURL(url) {
-    showProgress();
-    updateProgress(10, 'Validating YouTube URL...');
+async function processYouTube() {
+    const url = document.getElementById('youtube-url').value.trim();
     
-    const config = getProcessingConfig();
-    
-    const requestData = {
-        input_type: 'youtube',
-        source_url: url,
-        target_language: config.language,
-        output_formats: config.formats,
-        voice_id: config.voice,
-        youtubeOptions: config.youtubeOptions || {},
-        llm: config.llm
-    };
-    
-    try {
-        updateProgress(20, 'Starting YouTube processing...');
-        
-        const response = await fetch('/api/process', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestData)
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            updateProgress(30, 'Processing started...');
-            const config = getProcessingConfig();
-            pollJobStatus(result.job_id, config.liveDisplay);
-        } else {
-            throw new Error(result.error || 'Processing failed');
-        }
-        
-    } catch (error) {
-        hideProgress();
-        showMessage(`Error: ${error.message}`, 'danger');
-    }
-}
-
-async function processTextToSpeech(text) {
-    showProgress();
-    updateProgress(10, 'Preparing text for speech synthesis...');
-    
-    const config = getProcessingConfig();
-    
-    // Handle read-aloud functionality
-    if (config.readAloud) {
-        speakTextWithSelectedVoice(text, config);
-    }
-    
-    // Only process MP3 creation if requested
-    if (!config.createMp3) {
-        hideProgress();
-        showMessage('Text read aloud successfully', 'success');
+    if (!url) {
+        showError('Please enter a YouTube URL');
         return;
     }
     
-    const requestData = {
-        input_type: 'text',
-        input_text: text,
-        target_language: config.language,
-        output_formats: ['mp3'],
-        voice_id: config.voice
+    const config = getConfiguration();
+    
+    const youtubeOptions = {
+        pullTranscript: document.getElementById('pull-transcript')?.checked || false,
+        transcribeAudio: document.getElementById('transcribe-audio')?.checked || false
     };
     
     try {
-        updateProgress(30, 'Generating MP3 file...');
+        updateProgress(30, 'Processing YouTube content...');
         
         const response = await fetch('/api/process', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestData)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                input_type: 'youtube',
+                source_url: url,
+                target_language: config.language,
+                output_formats: config.formats,
+                youtubeOptions: youtubeOptions,
+                llm: config.ai
+            })
         });
-        
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-        }
         
         const result = await response.json();
         
         if (result.success) {
-            updateProgress(50, 'Processing speech...');
-            pollJobStatus(result.job_id, config.liveDisplay);
+            appState.currentJobId = result.job_id;
+            pollJobStatus(result.job_id);
         } else {
             throw new Error(result.error || 'Processing failed');
         }
-        
     } catch (error) {
-        hideProgress();
-        showMessage(`Error: ${error.message}`, 'danger');
+        showError(error.message);
     }
 }
 
-async function pollJobStatus(jobId, liveDisplay = false) {
-    const pollInterval = 2000; // 2 seconds
-    const maxAttempts = 300; // 10 minutes max
-    let attempts = 0;
-    let lastTextLength = 0;
+async function processText() {
+    const text = document.getElementById('text-input').value.trim();
     
-    const poll = async () => {
-        attempts++;
+    if (!text) {
+        showError('Please enter some text');
+        return;
+    }
+    
+    const config = getConfiguration();
+    
+    try {
+        updateProgress(30, 'Generating speech...');
         
-        try {
-            const response = await fetch(`/api/job-status/${jobId}`);
-            if (!response.ok) {
-                throw new Error('Failed to get job status');
-            }
-            
-            const status = await response.json();
-            
-            updateProgress(status.progress_percentage, status.status_message || 'Processing...');
-            
-            // Handle live text display for transcription
-            if (liveDisplay && status.result_text && status.result_text.length > lastTextLength) {
-                updateLiveTextDisplay(status.result_text);
-                lastTextLength = status.result_text.length;
-            }
-            
-            if (status.status === 'completed') {
-                updateProgress(100, 'Processing complete!');
-                setTimeout(() => {
-                    hideProgress();
-                    showResults(status);
-                }, 1000);
-                return;
-            } else if (status.status === 'failed') {
-                hideProgress();
-                showMessage(`Processing failed: ${status.error_message}`, 'danger');
-                return;
-            } else if (attempts >= maxAttempts) {
-                hideProgress();
-                showMessage('Processing timeout. Please try again.', 'warning');
-                return;
-            }
-            
-            // Continue polling
-            setTimeout(poll, pollInterval);
-            
-        } catch (error) {
-            hideProgress();
-            showMessage(`Error checking status: ${error.message}`, 'danger');
+        const response = await fetch('/api/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                input_type: 'text',
+                input_text: text,
+                target_language: config.language,
+                voice_id: config.voice,
+                output_formats: ['mp3']
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            appState.currentJobId = result.job_id;
+            pollJobStatus(result.job_id);
+        } else {
+            throw new Error(result.error || 'Processing failed');
         }
-    };
-    
-    poll();
-}
-
-function updateLiveTextDisplay(text) {
-    const resultsSection = document.getElementById('results-section');
-    const resultContent = document.getElementById('result-content');
-    
-    // Show results section if not already visible
-    if (resultsSection.classList.contains('d-none')) {
-        resultsSection.classList.remove('d-none');
-        resultContent.innerHTML = `
-            <div class="live-text-display">
-                <h6><i class="fas fa-eye"></i> Live Transcription:</h6>
-                <div id="live-text-content" class="text-content" style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto;">
-                    ${text.replace(/\n/g, '<br>')}
-                </div>
-            </div>
-        `;
-    } else {
-        // Update existing live text content
-        const liveTextContent = document.getElementById('live-text-content');
-        if (liveTextContent) {
-            liveTextContent.innerHTML = text.replace(/\n/g, '<br>');
-            // Auto-scroll to bottom
-            liveTextContent.scrollTop = liveTextContent.scrollHeight;
-        }
+    } catch (error) {
+        showError(error.message);
     }
 }
 
-function getProcessingConfig() {
-    // Determine which configuration section is active
-    const ttsOptions = document.getElementById('tts-options');
-    const transcriptionOptions = document.getElementById('transcription-options');
+async function processDocument() {
+    const formData = new FormData();
+    formData.append('files', appState.inputData);
     
-    if (!ttsOptions.classList.contains('d-none')) {
-        // TTS configuration (text/document input)
-        const language = document.getElementById('tts-language').value;
-        const voice = document.getElementById('tts-voice').value;
-        const readAloud = document.getElementById('read-aloud-now').checked;
-        const createMp3 = document.getElementById('auto-create-mp3').checked;
+    const config = getConfiguration();
+    formData.append('input_type', 'document');
+    formData.append('target_language', config.language);
+    formData.append('output_formats', JSON.stringify(config.formats));
+    formData.append('llm_config', JSON.stringify(config.ai));
+    
+    try {
+        updateProgress(30, 'Processing document...');
         
-        // Get LLM processing options
-        const llmConfig = getLLMConfig();
+        const response = await fetch('/api/process', {
+            method: 'POST',
+            body: formData
+        });
         
-        return {
-            language: language,
-            voice: voice,
-            formats: createMp3 ? ['mp3'] : [],
-            readAloud: readAloud,
-            createMp3: createMp3,
-            llm: llmConfig
-        };
-    } else {
-        // Transcription configuration (audio/video/youtube input)
-        const language = document.getElementById('output-language').value;
-        const liveDisplay = document.getElementById('live-text-display').checked;
+        const result = await response.json();
         
-        const formatCheckboxes = document.querySelectorAll('input[type="checkbox"][id^="format-"]:checked');
-        const formats = Array.from(formatCheckboxes).map(cb => cb.value);
-        
-        // YouTube-specific options
-        const youtubeOptions = {};
-        const youtubeTranscriptOptions = document.getElementById('youtube-transcript-options');
-        if (youtubeTranscriptOptions && !youtubeTranscriptOptions.classList.contains('d-none')) {
-            youtubeOptions.pullTranscript = document.getElementById('pull-transcript').checked;
-            youtubeOptions.transcribeAudio = document.getElementById('transcribe-audio').checked;
+        if (result.success) {
+            appState.currentJobId = result.job_id;
+            pollJobStatus(result.job_id);
+        } else {
+            throw new Error(result.error || 'Processing failed');
         }
-        
-        // Get LLM processing options
-        const llmConfig = getLLMConfig();
-        
-        // Track if AI is enabled for this transcription
-        aiWasEnabledDuringTranscription = llmConfig.enabled;
-        
-        return {
-            language: language,
-            voice: 'google_en', // Default voice for transcription
-            formats: formats.length > 0 ? formats : ['text'],
-            liveDisplay: liveDisplay,
-            youtubeOptions: youtubeOptions,
-            llm: llmConfig
-        };
+    } catch (error) {
+        showError(error.message);
     }
 }
 
-function getLLMConfig() {
-    const enableLLM = document.getElementById('enable-llm-processing');
-    
-    if (!enableLLM || !enableLLM.checked) {
-        return {
+// Get Configuration
+function getConfiguration() {
+    const config = {
+        language: null,
+        voice: null,
+        formats: [],
+        ai: {
             enabled: false
+        }
+    };
+    
+    if (appState.processingMode === 'tts') {
+        config.language = document.getElementById('tts-language')?.value || 'en';
+        config.voice = document.getElementById('tts-voice')?.value || 'google_en_us_female';
+    } else {
+        config.language = document.getElementById('output-language')?.value || 'en';
+        
+        const formatChecks = document.querySelectorAll('input[id^="format-"]:checked');
+        config.formats = Array.from(formatChecks).map(cb => cb.value);
+        if (config.formats.length === 0) config.formats = ['text'];
+    }
+    
+    // AI configuration
+    const aiEnabled = document.getElementById('enable-ai-processing').checked;
+    if (aiEnabled) {
+        config.ai = {
+            enabled: true,
+            prompt: document.getElementById('ai-prompt').value.trim() || 'Summarize this text in 3-5 key points',
+            model: document.getElementById('ai-model').value,
+            saveToOpenQM: document.getElementById('save-to-openqm').checked,
+            exportMarkdown: document.getElementById('export-markdown').checked
         };
     }
     
-    const promptText = document.getElementById('llm-prompt').value.trim();
-    
-    return {
-        enabled: true,
-        prompt: promptText || 'Summarize this text in 3-5 key points',  // Default prompt if empty
-        model: document.getElementById('llm-model').value,
-        saveToOpenQM: document.getElementById('save-to-openqm').checked,
-        exportMarkdown: document.getElementById('export-markdown').checked
-    };
+    return config;
 }
 
+// Progress Management
 function showProgress() {
-    // Reset AI flag when starting new processing
-    aiWasEnabledDuringTranscription = false;
-    
-    document.getElementById('progress-section').classList.remove('d-none');
-    document.getElementById('results-section').classList.add('d-none');
-    
-    // Show processing options again for new transcription
-    const processingOptionsSection = document.getElementById('processing-options-section');
-    if (processingOptionsSection) {
-        processingOptionsSection.classList.remove('d-none');
-    }
-}
-
-function hideProgress() {
-    document.getElementById('progress-section').classList.add('d-none');
+    document.getElementById('progress-card').classList.remove('hidden');
+    document.getElementById('process-card').classList.add('hidden');
+    setStep(3);
 }
 
 function updateProgress(percentage, message) {
-    const progressBar = document.getElementById('main-progress-bar');
-    const statusElement = document.getElementById('progress-status');
-    
-    progressBar.style.width = `${percentage}%`;
-    progressBar.textContent = `${Math.round(percentage)}%`;
-    statusElement.textContent = message;
+    document.getElementById('progress-fill').style.width = `${percentage}%`;
+    document.getElementById('progress-status').textContent = message;
 }
 
-// Global variable to store the current transcript
-let currentTranscript = null;
-let aiWasEnabledDuringTranscription = false;
+// Job Status Polling
+async function pollJobStatus(jobId) {
+    const interval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/job-status/${jobId}`);
+            const status = await response.json();
+            
+            updateProgress(status.progress_percentage, status.status_message);
+            
+            if (status.status === 'completed') {
+                clearInterval(interval);
+                showResults(status);
+            } else if (status.status === 'failed') {
+                clearInterval(interval);
+                showError(status.error_message || 'Processing failed');
+            }
+        } catch (error) {
+            clearInterval(interval);
+            showError('Failed to get job status');
+        }
+    }, 500);
+}
 
+// Results Display
 function showResults(jobData) {
-    const resultsSection = document.getElementById('results-section');
+    document.getElementById('progress-card').classList.add('hidden');
+    document.getElementById('results-card').classList.remove('hidden');
+    setStep(4);
+    
     const resultContent = document.getElementById('result-content');
     const resultDownloads = document.getElementById('result-downloads');
-    const postTranscriptionAI = document.getElementById('post-transcription-ai');
-    const processingOptionsSection = document.getElementById('processing-options-section');
+    const aiEnhancement = document.getElementById('ai-enhancement-section');
     
-    // Hide processing options section after results are shown
-    if (processingOptionsSection) {
-        processingOptionsSection.classList.add('d-none');
-    }
-    
-    // Show results section
-    resultsSection.classList.remove('d-none');
-    
-    // Display result text if available
+    // Display transcript/result
     if (jobData.result_text) {
-        // Store transcript for potential AI processing
-        currentTranscript = jobData.result_text;
+        appState.currentTranscript = jobData.result_text;
         
         resultContent.innerHTML = `
-            <div class="result-text">
-                <h6>Result:</h6>
-                <div class="text-content" style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto;">
-                    ${jobData.result_text.replace(/\n/g, '<br>')}
-                </div>
-            </div>
+            <div class="result-preview">${jobData.result_text.replace(/\n/g, '<br>')}</div>
         `;
         
-        // Show AI processing button ONLY if:
-        // 1. This is a transcription job (not TTS)
-        // 2. AI was NOT enabled during the initial transcription
-        const isTTSJob = jobData.result_files && jobData.result_files.some(f => f.endsWith('.mp3') || f.endsWith('.wav'));
-        if (!isTTSJob && !aiWasEnabledDuringTranscription && postTranscriptionAI) {
-            postTranscriptionAI.classList.remove('d-none');
+        // Show AI enhancement if not already used
+        const isTTSJob = jobData.result_files?.some(f => f.endsWith('.mp3') || f.endsWith('.wav'));
+        if (!isTTSJob && !appState.aiUsedInInitialProcess) {
+            aiEnhancement.classList.remove('hidden');
         }
     }
     
-    // Display download links for generated files
+    // Display download links
     if (jobData.result_files && jobData.result_files.length > 0) {
-        const downloadLinks = jobData.result_files.map(file => {
-            const fileType = file.split('.').pop().toUpperCase();
-            return `<a href="/download/${file}" class="result-file" target="_blank">
-                <i class="fas fa-download"></i> Download ${fileType}
+        resultDownloads.innerHTML = jobData.result_files.map(file => {
+            const ext = file.split('.').pop().toUpperCase();
+            return `<a href="/download/${file}" class="chip" target="_blank">
+                <i class="fas fa-download"></i> ${ext}
             </a>`;
         }).join('');
-        
-        resultDownloads.innerHTML = `
-            <h6>Download Files:</h6>
-            ${downloadLinks}
-        `;
     }
     
     showMessage('Processing completed successfully!', 'success');
 }
 
-function showMessage(message, type) {
-    const messagesContainer = document.getElementById('status-messages');
+// Post-AI Processing
+function initializePostAI() {
+    const quickActionBtns = document.querySelectorAll('.quick-action-btn[data-prompt]');
+    const customAIBtn = document.getElementById('custom-ai-btn');
+    const customPanel = document.getElementById('custom-ai-panel');
+    const executeBtn = document.getElementById('execute-post-ai');
     
-    const messageElement = document.createElement('div');
-    messageElement.className = `alert alert-${type} alert-dismissible fade show`;
-    messageElement.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    messagesContainer.appendChild(messageElement);
-    
-    // Auto-remove success messages after 5 seconds
-    if (type === 'success') {
-        setTimeout(() => {
-            if (messageElement.parentNode) {
-                messageElement.remove();
-            }
-        }, 5000);
-    }
-}
-
-// Utility function to format file sizes
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-function mapVoiceSelection(selectedVoice, availableVoices, language) {
-    /**
-     * Maps the UI voice selection to browser speech synthesis voices
-     * @param {string} selectedVoice - Voice ID from the UI dropdown
-     * @param {Array} availableVoices - Available browser voices
-     * @param {string} language - Selected language
-     * @returns {SpeechSynthesisVoice|null} - Matched voice or null
-     */
-    
-    if (!availableVoices || availableVoices.length === 0) {
-        return null;
-    }
-    
-    // Log all available voices for debugging
-    console.log('All available voices:');
-    availableVoices.forEach((voice, index) => {
-        console.log(`${index}: ${voice.name} (${voice.lang}) - ${voice.localService ? 'Local' : 'Remote'}`);
+    quickActionBtns.forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const prompt = this.dataset.prompt;
+            await processWithAI(prompt);
+        });
     });
     
-    // Define comprehensive voice mapping with multiple fallback strategies
-    const voiceMapping = {
-        'google_en_us_female': {
-            primary: ['Google US English', 'Samantha', 'Victoria', 'Allison'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'google_en_us_male': {
-            primary: ['Google US English', 'Alex', 'Fred', 'Daniel'],
-            lang: 'en-US', 
-            gender: 'male'
-        },
-        'google_en_us_wavenet_a': {
-            primary: ['Samantha', 'Victoria', 'Allison', 'Ava'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'google_en_us_wavenet_b': {
-            primary: ['Alex', 'Fred', 'Daniel', 'Nathan'],
-            lang: 'en-US',
-            gender: 'male'
-        },
-        'google_en_us_wavenet_c': {
-            primary: ['Karen', 'Susan', 'Victoria'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'google_en_us_wavenet_d': {
-            primary: ['Tom', 'Aaron', 'Alex'],
-            lang: 'en-US',
-            gender: 'male'
-        },
-        'google_en_us_neural2_a': {
-            primary: ['Ava', 'Samantha', 'Victoria'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'google_en_us_neural2_c': {
-            primary: ['Alex', 'Daniel', 'Fred'],
-            lang: 'en-US',
-            gender: 'male'
-        },
-        'google_en_uk': {
-            primary: ['Daniel', 'Kate', 'Oliver'],
-            lang: 'en-GB',
-            gender: 'female'
-        },
-        'google_en_au': {
-            primary: ['Karen', 'Catherine'],
-            lang: 'en-AU',
-            gender: 'female'
-        },
-        'google_en_ca': {
-            primary: ['Alex', 'Samantha'],
-            lang: 'en-CA',
-            gender: 'female'
-        },
-        'google_en_uk_female': {
-            primary: ['Google UK English Female', 'Kate', 'Stephanie'],
-            lang: 'en-GB',
-            gender: 'female'
-        },
-        'google_en_uk_male': {
-            primary: ['Google UK English Male', 'Daniel', 'Oliver'],
-            lang: 'en-GB',
-            gender: 'male'
-        },
-        'system_alex': {
-            primary: ['Alex'],
-            lang: 'en-US',
-            gender: 'male'
-        },
-        'system_samantha': {
-            primary: ['Samantha'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'system_victoria': {
-            primary: ['Victoria'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'system_daniel': {
-            primary: ['Daniel'],
-            lang: 'en-GB',
-            gender: 'male'
-        },
-        'system_kate': {
-            primary: ['Kate'],
-            lang: 'en-GB',
-            gender: 'female'
-        },
-        'system_karen': {
-            primary: ['Karen'],
-            lang: 'en-AU',
-            gender: 'female'
-        },
-        'system_stephanie': {
-            primary: ['Stephanie'],
-            lang: 'en-GB',
-            gender: 'female'
-        },
-        'system_tessa': {
-            primary: ['Tessa'],
-            lang: 'en-ZA',
-            gender: 'female'
-        },
-        'system_allison': {
-            primary: ['Allison'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'system_ava': {
-            primary: ['Ava'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'system_fred': {
-            primary: ['Fred'],
-            lang: 'en-US',
-            gender: 'male'
-        },
-        'system_oliver': {
-            primary: ['Oliver'],
-            lang: 'en-GB',
-            gender: 'male'
-        },
-        'system_susan': {
-            primary: ['Susan'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'system_tom': {
-            primary: ['Tom'],
-            lang: 'en-US',
-            gender: 'male'
-        },
-        'system_zoe': {
-            primary: ['Zoe'],
-            lang: 'en-US',
-            gender: 'female'
-        },
-        'system_aaron': {
-            primary: ['Aaron'],
-            lang: 'en-US',
-            gender: 'male'
-        },
-        'system_catherine': {
-            primary: ['Catherine'],
-            lang: 'en-AU',
-            gender: 'female'
-        },
-        'system_moira': {
-            primary: ['Moira'],
-            lang: 'en-IE',
-            gender: 'female'
-        },
-        'system_whisper': {
-            primary: ['Whisper'],
-            lang: 'en-US',
-            gender: 'neutral'
-        },
-        'system_superstar': {
-            primary: ['Superstar'],
-            lang: 'en-US',
-            gender: 'neutral'
-        },
-        'system_trinoids': {
-            primary: ['Trinoids'],
-            lang: 'en-US',
-            gender: 'neutral'
-        },
-        'system_zarvox': {
-            primary: ['Zarvox'],
-            lang: 'en-US',
-            gender: 'neutral'
-        },
-        'system_wobble': {
-            primary: ['Wobble'],
-            lang: 'en-US',
-            gender: 'neutral'
-        },
-        'system_thomas': {
-            primary: ['Thomas'],
-            lang: 'fr-FR',
-            gender: 'male'
-        },
-        'system_marie': {
-            primary: ['Marie'],
-            lang: 'fr-FR',
-            gender: 'female'
-        },
-        'system_anna': {
-            primary: ['Anna'],
-            lang: 'de-DE',
-            gender: 'female'
-        },
-        'system_jorge': {
-            primary: ['Jorge'],
-            lang: 'es-ES',
-            gender: 'male'
-        }
-    };
+    customAIBtn.addEventListener('click', function() {
+        customPanel.classList.toggle('hidden');
+    });
     
-    const mapping = voiceMapping[selectedVoice];
-    if (!mapping) {
-        console.log('No mapping found for:', selectedVoice);
-        return availableVoices.find(voice => voice.lang.startsWith(language.substring(0, 2))) || availableVoices[0];
-    }
-    
-    console.log('Voice mapping for', selectedVoice, ':', mapping);
-    
-    let matchedVoice = null;
-    
-    // Strategy 1: Try exact name matches
-    for (const voiceName of mapping.primary) {
-        matchedVoice = availableVoices.find(voice => 
-            voice.name.toLowerCase() === voiceName.toLowerCase() && 
-            voice.lang === mapping.lang
-        );
-        if (matchedVoice) {
-            console.log('Exact match found:', matchedVoice.name);
-            break;
-        }
-    }
-    
-    // Strategy 2: Try partial name matches with language
-    if (!matchedVoice) {
-        for (const voiceName of mapping.primary) {
-            matchedVoice = availableVoices.find(voice => 
-                voice.name.toLowerCase().includes(voiceName.toLowerCase()) && 
-                voice.lang === mapping.lang
-            );
-            if (matchedVoice) {
-                console.log('Partial match found:', matchedVoice.name);
-                break;
-            }
-        }
-    }
-    
-    // Strategy 3: Gender-based matching with language
-    if (!matchedVoice) {
-        const genderKeywords = mapping.gender === 'male' ? 
-            ['male', 'man', 'alex', 'daniel', 'fred', 'tom', 'aaron', 'nathan'] : 
-            ['female', 'woman', 'samantha', 'karen', 'victoria', 'allison', 'ava', 'susan'];
-        
-        matchedVoice = availableVoices.find(voice => 
-            voice.lang === mapping.lang &&
-            genderKeywords.some(keyword => voice.name.toLowerCase().includes(keyword))
-        );
-        if (matchedVoice) {
-            console.log('Gender match found:', matchedVoice.name);
-        }
-    }
-    
-    // Strategy 4: Any voice with matching language
-    if (!matchedVoice) {
-        matchedVoice = availableVoices.find(voice => voice.lang === mapping.lang);
-        if (matchedVoice) {
-            console.log('Language match found:', matchedVoice.name);
-        }
-    }
-    
-    // Strategy 5: Any English voice if target was English
-    if (!matchedVoice && mapping.lang.startsWith('en')) {
-        matchedVoice = availableVoices.find(voice => voice.lang.startsWith('en'));
-        if (matchedVoice) {
-            console.log('English fallback found:', matchedVoice.name);
-        }
-    }
-    
-    return matchedVoice || availableVoices[0];
-}
-
-function speakTextWithSelectedVoice(text, config) {
-    /**
-     * Speaks text using browser speech synthesis with the selected voice
-     * @param {string} text - Text to speak
-     * @param {Object} config - Configuration object with voice and language settings
-     */
-    try {
-        if (!('speechSynthesis' in window)) {
-            showMessage('Read-aloud not supported in this browser', 'warning');
-            return;
-        }
-
-        // Function to actually speak the text
-        const speakText = () => {
-            // Cancel any existing speech
-            speechSynthesis.cancel();
-            
-            // Wait a bit for cancellation to complete
-            setTimeout(() => {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = config.language;
-                
-                // Get fresh voices list every time
-                const voices = speechSynthesis.getVoices();
-                console.log('Available voices for selection:', voices.length);
-                console.log('Selected voice ID:', config.voice);
-                
-                const selectedVoice = mapVoiceSelection(config.voice, voices, config.language);
-                
-                if (selectedVoice) {
-                    utterance.voice = selectedVoice;
-                    console.log('Using voice:', selectedVoice.name, selectedVoice.lang);
-                } else {
-                    console.log('No voice mapped, using default. Voice ID was:', config.voice);
-                }
-                
-                // Set speech properties based on voice selection
-                if (config.voice && config.voice.includes('male')) {
-                    utterance.pitch = 0.8; // Lower pitch for male voices
-                } else {
-                    utterance.pitch = 1.0; // Default pitch for female voices
-                }
-                
-                utterance.rate = 0.9; // Slightly slower for better clarity
-                utterance.volume = 1.0; // Full volume
-                
-                // Add event listeners for feedback
-                utterance.onstart = () => {
-                    console.log('Speech started');
-                    showMessage('Reading text aloud with selected voice...', 'info');
-                };
-                
-                utterance.onend = () => {
-                    console.log('Speech ended');
-                    showMessage('Finished reading text aloud', 'success');
-                };
-                
-                utterance.onerror = (event) => {
-                    console.error('Speech error:', event.error);
-                    showMessage(`Read-aloud error: ${event.error}`, 'warning');
-                };
-                
-                console.log('Starting speech synthesis...');
-                speechSynthesis.speak(utterance);
-                
-                // Chrome workaround
-                setTimeout(() => {
-                    if (speechSynthesis.paused) {
-                        speechSynthesis.resume();
-                    }
-                }, 100);
-            }, 50); // Small delay to ensure cancellation completes
-        };
-
-        // Check if voices are already loaded
-        const voices = speechSynthesis.getVoices();
-        if (voices.length > 0) {
-            speakText();
+    executeBtn.addEventListener('click', async function() {
+        const prompt = document.getElementById('post-ai-prompt').value.trim();
+        if (prompt) {
+            await processWithAI(prompt);
         } else {
-            // Wait for voices to be loaded
-            speechSynthesis.onvoiceschanged = () => {
-                speakText();
-                speechSynthesis.onvoiceschanged = null; // Remove listener
-            };
+            showError('Please enter instructions for the AI');
         }
-        
-    } catch (error) {
-        console.error('Read-aloud error:', error);
-        showMessage('Read-aloud failed: ' + error.message, 'warning');
-    }
+    });
 }
 
-function testSpeechSynthesis() {
-    /**
-     * Comprehensive speech synthesis diagnostics
-     */
-    console.log('=== Speech Synthesis Diagnostics ===');
-    
-    // Check basic support
-    if (!('speechSynthesis' in window)) {
-        console.error('Speech synthesis not supported');
-        showMessage('Speech synthesis not supported in this browser', 'danger');
+async function processWithAI(prompt) {
+    if (!appState.currentTranscript) {
+        showError('No transcript available');
         return;
     }
     
-    // Browser info
-    console.log('User Agent:', navigator.userAgent);
-    console.log('Platform:', navigator.platform);
-    
-    // Audio context check (for general audio support)
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        console.log('Audio Context State:', audioContext.state);
-        if (audioContext.state === 'suspended') {
-            audioContext.resume().then(() => {
-                console.log('Audio context resumed');
-            });
-        }
-    } catch (e) {
-        console.log('Audio Context Error:', e.message);
-    }
-    
-    // Cancel any existing speech
-    speechSynthesis.cancel();
-    
-    // Voice availability
-    const voices = speechSynthesis.getVoices();
-    console.log('Available voices:', voices.length);
-    if (voices.length > 0) {
-        console.log('First voice:', voices[0].name, voices[0].lang);
-    } else {
-        console.log('No voices available, waiting for voices...');
-        speechSynthesis.onvoiceschanged = () => {
-            const newVoices = speechSynthesis.getVoices();
-            console.log('Voices loaded:', newVoices.length);
-            if (newVoices.length > 0) {
-                console.log('First voice:', newVoices[0].name, newVoices[0].lang);
-            }
-        };
-    }
-    
-    // Create test utterance
-    const testText = "Audio test. Can you hear this message?";
-    const utterance = new SpeechSynthesisUtterance(testText);
-    
-    // Basic settings
-    utterance.volume = 1.0;
-    utterance.rate = 0.8;
-    utterance.pitch = 1.0;
-    utterance.lang = 'en-US';
-    
-    // Set a specific voice if available
-    if (voices.length > 0) {
-        utterance.voice = voices[0];
-        console.log('Using voice:', voices[0].name);
-    }
-    
-    // Event handlers with detailed logging
-    utterance.onstart = () => {
-        console.log('✓ Speech STARTED');
-        showMessage('Audio test started - listen for speech...', 'info');
-    };
-    
-    utterance.onend = () => {
-        console.log('✓ Speech ENDED normally');
-        showMessage('Audio test completed successfully', 'success');
-    };
-    
-    utterance.onerror = (event) => {
-        console.error('✗ Speech ERROR:', event.error);
-        showMessage(`Audio test failed: ${event.error}`, 'danger');
-    };
-    
-    utterance.onpause = () => {
-        console.log('⏸ Speech PAUSED');
-    };
-    
-    utterance.onresume = () => {
-        console.log('▶ Speech RESUMED');
-    };
-    
-    utterance.onboundary = (event) => {
-        console.log('📍 Speech boundary:', event.name, event.charIndex);
-    };
-    
-    // Current state before speaking
-    console.log('Before speaking:');
-    console.log('- Speaking:', speechSynthesis.speaking);
-    console.log('- Pending:', speechSynthesis.pending);
-    console.log('- Paused:', speechSynthesis.paused);
-    
-    // Speak the utterance
-    console.log('🎤 Starting speech synthesis...');
-    speechSynthesis.speak(utterance);
-    
-    // Monitor progress
-    let checkCount = 0;
-    const checkInterval = setInterval(() => {
-        checkCount++;
-        console.log(`Check ${checkCount}:`, {
-            speaking: speechSynthesis.speaking,
-            pending: speechSynthesis.pending,
-            paused: speechSynthesis.paused
-        });
-        
-        if (!speechSynthesis.speaking && !speechSynthesis.pending) {
-            clearInterval(checkInterval);
-            if (checkCount === 1) {
-                console.log('⚠ Speech never started');
-                showMessage('Audio test failed to start. Check browser permissions and volume.', 'warning');
-            }
-        }
-        
-        if (checkCount > 20) { // Stop after 10 seconds
-            clearInterval(checkInterval);
-        }
-    }, 500);
-}
-
-/**
- * Initialize post-transcription AI processing
- */
-function initializePostTranscriptionAI() {
-    const triggerButton = document.getElementById('trigger-ai-processing');
-    
-    if (triggerButton) {
-        triggerButton.addEventListener('click', async function() {
-            // Check if we have a transcript to process
-            if (!currentTranscript) {
-                showMessage('No transcript available to process', 'warning');
-                return;
-            }
-            
-            // Get LLM configuration
-            const llmConfig = getLLMConfig();
-            
-            if (!llmConfig.enabled || !llmConfig.prompt) {
-                showMessage('Please enable AI processing and enter a prompt below first', 'warning');
-                // Scroll to LLM options
-                document.getElementById('llm-options').scrollIntoView({ behavior: 'smooth' });
-                return;
-            }
-            
-            // Process the transcript with AI
-            await processTranscriptWithAI(currentTranscript, llmConfig);
-        });
-    }
-}
-
-/**
- * Process an existing transcript with AI
- */
-async function processTranscriptWithAI(transcript, llmConfig) {
-    try {
-        showProgress();
-        updateProgress(10, 'Preparing AI processing...');
-        
-        const requestData = {
-            text: transcript,
-            prompt: llmConfig.prompt,
-            model: llmConfig.model,
-            save_to_openqm: llmConfig.saveToOpenQM,
-            export_markdown: llmConfig.exportMarkdown
-        };
-        
-        updateProgress(30, 'Sending to AI for processing...');
+        showMessage('Processing with AI...', 'info');
         
         const response = await fetch('/api/process-text-with-ai', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestData)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: appState.currentTranscript,
+                prompt: prompt,
+                model: 'llama2',
+                save_to_openqm: false,
+                export_markdown: false
+            })
         });
-        
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-        }
         
         const result = await response.json();
         
         if (result.success) {
-            updateProgress(100, 'AI processing complete!');
-            
-            setTimeout(() => {
-                hideProgress();
-                
-                // Display AI-processed result
-                const resultContent = document.getElementById('result-content');
-                resultContent.innerHTML += `
-                    <hr class="my-4">
-                    <div class="ai-processed-result">
-                        <h6><i class="fas fa-brain text-primary"></i> AI Processed Result:</h6>
-                        <div class="text-content" style="background: #e7f3ff; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff;">
-                            ${result.processed_text.replace(/\n/g, '<br>')}
-                        </div>
-                    </div>
-                `;
-                
-                // Add download links if files were created
-                if (result.files && result.files.length > 0) {
-                    const resultDownloads = document.getElementById('result-downloads');
-                    const aiDownloadLinks = result.files.map(file => {
-                        const fileType = file.split('.').pop().toUpperCase();
-                        return `<a href="/download/${file}" class="result-file" target="_blank">
-                            <i class="fas fa-download"></i> Download AI ${fileType}
-                        </a>`;
-                    }).join('');
-                    
-                    resultDownloads.innerHTML += aiDownloadLinks;
-                }
-                
-                showMessage('AI processing completed successfully!', 'success');
-                
-                // Hide the AI processing button since we've already processed it
-                const postTranscriptionAI = document.getElementById('post-transcription-ai');
-                if (postTranscriptionAI) {
-                    postTranscriptionAI.innerHTML = `
-                        <hr>
-                        <p class="text-success"><i class="fas fa-check-circle"></i> AI processing completed. Results shown above.</p>
-                    `;
-                }
-            }, 1000);
+            displayAIResult(result.processed_text, result.files);
+            showMessage('AI processing complete!', 'success');
         } else {
             throw new Error(result.error || 'AI processing failed');
         }
-        
     } catch (error) {
-        hideProgress();
-        showMessage(`Error: ${error.message}`, 'danger');
+        showError(error.message);
     }
+}
+
+function displayAIResult(text, files) {
+    const resultContent = document.getElementById('result-content');
+    
+    resultContent.innerHTML += `
+        <hr style="margin: 2rem 0;">
+        <h4><i class="fas fa-brain" style="color: var(--primary-color);"></i> AI Enhanced Result</h4>
+        <div class="result-preview" style="background: #eff6ff;">${text.replace(/\n/g, '<br>')}</div>
+    `;
+    
+    if (files && files.length > 0) {
+        const downloads = document.getElementById('result-downloads');
+        files.forEach(file => {
+            const ext = file.split('.').pop().toUpperCase();
+            downloads.innerHTML += `<a href="/download/${file}" class="chip" target="_blank">
+                <i class="fas fa-download"></i> AI ${ext}
+            </a>`;
+        });
+    }
+    
+    // Hide AI enhancement section after use
+    document.getElementById('ai-enhancement-section').classList.add('hidden');
+}
+
+// Utility Functions
+function showMessage(message, type) {
+    const container = document.getElementById('status-messages');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'}"></i> ${message}`;
+    container.appendChild(alert);
+    
+    setTimeout(() => alert.remove(), 5000);
+}
+
+function showError(message) {
+    document.getElementById('progress-card').classList.add('hidden');
+    showMessage(message, 'danger');
 }
