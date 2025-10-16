@@ -1,0 +1,198 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+    maxconn 2048
+    stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+    pidfile /run/haproxy.pid
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5000ms
+    timeout client  50000ms
+    timeout server  50000ms
+    errorfile 400 /etc/haproxy/errors/400.http
+    errorfile 403 /etc/haproxy/errors/403.http
+    errorfile 408 /etc/haproxy/errors/408.http
+    errorfile 500 /etc/haproxy/errors/500.http
+    errorfile 502 /etc/haproxy/errors/502.http
+    errorfile 503 /etc/haproxy/errors/503.http
+    errorfile 504 /etc/haproxy/errors/504.http
+
+listen stats
+    bind *:8404
+    mode http
+    stats enable
+    stats uri /stats
+    stats realm Haproxy\ Statistics
+    stats auth admin:apgar-66
+    stats refresh 10s
+    timeout connect 5s
+    timeout client  10s
+    timeout server  10s
+
+frontend https_in
+    bind *:443 ssl crt /etc/haproxy/certs/wildcard.pem ciphers HIGH:!aNULL:!MD5
+    mode http
+    log global
+    option forwardfor
+    option http-server-close
+    http-request set-header X-Forwarded-Proto https
+    http-request add-header X-Real-IP %[src]
+    acl is_pihole_lcs_ai hdr(host) -i pihole.lcs.ai
+    use_backend pihole_lcs_ai_backend if is_pihole_lcs_ai
+
+    acl is_caprover hdr(host) -i caprover.lcs.ai
+    acl is_n8n hdr(host) -i n8n.lcs.ai
+    acl is_nextcloud hdr(host) -i next.lcs.ai nextcloud.lcs.ai
+    acl is_chat hdr(host) -i chat.lcs.ai
+    acl is_hal hdr(host) -i hal.lcs.ai
+    acl is_webmin hdr(host) -i webmin.lcs.ai
+    acl is_nas hdr(host) -i nas.lcs.ai
+    acl is_ollama hdr(host) -i ollama.lcs.ai
+    acl is_speech hdr(host) -i speech.lcs.ai
+    acl is_accuterm hdr(host) -i accuterm.lcs.ai
+    acl is_homeassistant hdr(host) -i ha.lcs.ai
+    use_backend homeassistant_backend if is_homeassistant
+
+    use_backend nextcloud_backend if is_nextcloud
+    use_backend webmin_backend if is_webmin
+    use_backend n8n_backend if is_n8n
+    use_backend nas_backend if is_nas
+    use_backend hal_backend if is_hal
+    use_backend chat_backend if is_chat
+    use_backend ollama_backend if is_ollama
+    use_backend speech_backend if is_speech
+    use_backend caprover_backend if is_caprover
+    use_backend accuterm_backend if is_accuterm
+    acl is_dash_lcs_ai hdr(host) -i dash.lcs.ai
+    use_backend dash_lcs_ai_backend if is_dash_lcs_ai
+    default_backend fallback_backend
+
+frontend http_in
+    bind *:80
+    mode http
+    log global
+    acl is_openai hdr(host) -i openai.lcs.ai
+    acl is_anthropic hdr(host) -i anthropic.lcs.ai
+    acl is_caprover hdr(host) -i caprover.lcs.ai
+    use_backend openai_backend if is_openai
+    use_backend anthropic_backend if is_anthropic
+    use_backend caprover_backend if is_caprover
+    http-request redirect scheme https code 301 if !is_openai !is_anthropic !is_caprover
+
+backend nextcloud_backend
+    option http-server-close
+    option forwardfor
+    option httpchk GET /status.php
+    http-request set-header X-Forwarded-Proto https
+    server nextcloud 10.1.40.17:8080 check
+
+backend webmin_backend
+    option http-server-close
+    option forwardfor
+    server webmin 10.1.50.1:10000 check
+
+backend n8n_backend
+    option http-server-close
+    option forwardfor
+    server n8n 10.1.40.17:5678 check
+
+backend nas_backend
+    option http-server-close
+    option forwardfor
+    server nas 10.1.32.100:5001 ssl verify none
+
+backend hal_backend
+    option http-server-close
+    option forwardfor
+    server hal 10.1.50.2:3000 check
+
+backend chat_backend
+    option http-server-close
+    option forwardfor
+    server chat 10.1.40.17:3000 check
+
+backend ollama_backend
+    option http-server-close
+    option forwardfor
+    server ollama 10.1.10.20:11434 check
+
+backend speech_backend
+    option http-server-close
+    option forwardfor
+    server ubuai 10.1.10.20:8000 check
+
+backend accuterm_backend
+    option http-server-close
+    option forwardfor
+    server accuterm 10.1.34.103:4380 ssl verify none
+
+backend fallback_backend
+    option http-server-close
+    option forwardfor
+    server fallback 127.0.0.1:8081 check
+
+# iDRAC Reverse Proxy (TCP passthrough on port 8443)
+frontend idrac_front
+    option tcplog
+    bind *:8443 ssl crt /etc/haproxy/certs/wildcard.pem
+    mode tcp
+    tcp-request inspect-delay 5s
+    tcp-request content accept if { req_ssl_hello_type 1 }
+    use_backend idrac_backend if { req.ssl_sni -i idrac.lcs.ai }
+
+backend idrac_backend
+    mode tcp
+    server idrac 10.1.34.102:443 ssl verify none
+
+backend caprover_backend
+    mode http
+    server caprover_node 10.1.50.5:4000 check
+
+backend pihole_lcs_ai_backend
+    option http-server-close
+    option forwardfor
+    
+    # Critical: Set the forwarded protocol header so Pi-hole knows this came via HTTPS
+    http-request set-header X-Forwarded-Proto https
+    
+    # Health-check: ask Pi-hole's page and treat 2xx *or* 3xx as UP
+    option httpchk GET /admin
+    http-check expect rstatus (2|3)[0-9][0-9]
+    
+    # Pi-hole FTL serves web interface on port 443 with SSL
+    server pihole_lcs_ai 10.1.50.1:443 ssl verify none check inter 5s rise 2 fall 3
+    
+    # Convenience: bare domain → /admin/
+    http-request redirect location /admin/ code 301 if { path -i / }
+# Update your dash_backend in HAProxy config
+
+
+backend dash_lcs_ai_backend
+    option http-server-close
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https
+    server dash_lcs_ai 10.1.50.5:7575 check
+
+backend homeassistant_backend
+    option http-server-close
+    option forwardfor
+    server homeassistant 10.1.100.10:8123 check
+
+backend openai_backend
+    mode http
+    option http-server-close
+    option forwardfor
+    http-request set-header X-Forwarded-Host %[req.hdr(Host)]
+    server openai api.openai.com:443 ssl verify none sni str(api.openai.com)
+
+backend anthropic_backend
+    mode http
+    option http-server-close
+    option forwardfor
+    server anthropic api.anthropic.com:443 ssl verify none sni str(api.anthropic.com)
+lawr@ubu6:~$ 
