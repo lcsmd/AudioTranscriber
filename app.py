@@ -73,14 +73,17 @@ logger.info(f"Transcriptions will be saved to: {TRANSCRIPTIONS_FOLDER}")
 
 # Database availability flag
 DB_AVAILABLE = False
-try:
-    if db_url:
+if db_url:
+    try:
+        from sqlalchemy import text
         with app.app_context():
-            db.session.execute(db.text('SELECT 1'))
+            db.session.execute(text('SELECT 1'))
             DB_AVAILABLE = True
-            logger.info("Database connection verified")
-except Exception as e:
-    logger.warning(f"Database not available: {str(e)}")
+            logger.info("✓ Database connection verified - DB_AVAILABLE = True")
+    except Exception as e:
+        logger.warning(f"✗ Database not available - DB_AVAILABLE = False: {str(e)}")
+else:
+    logger.warning("✗ No DATABASE_URL configured - DB_AVAILABLE = False")
 
 def allowed_file(filename, file_type='all'):
     if not filename or '.' not in filename:
@@ -305,6 +308,77 @@ def api_transcription_history():
         logger.error(f"Error fetching history: {str(e)}")
         return jsonify({'jobs': [], 'error': str(e)}), 500
 
+def process_audio_files_directly(files):
+    """Process audio files directly without database/job tracking"""
+    from datetime import datetime
+    
+    logger.info(f"Processing {len(files)} audio files directly")
+    
+    all_transcriptions = []
+    
+    for file in files:
+        if not file.filename or not allowed_file(file.filename, 'audio'):
+            continue
+            
+        original_filename = secure_filename(file.filename)
+        file_extension = original_filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        file.save(filepath)
+        
+        try:
+            # Convert MP3 to WAV if needed
+            if file_extension == 'mp3':
+                wav_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{uuid.uuid4()}.wav")
+                convert_mp3_to_wav(filepath, wav_filepath)
+                os.remove(filepath)
+                filepath = wav_filepath
+            
+            # Transcribe
+            start_time = time.time()
+            transcription_result = send_to_whisper(filepath)
+            processing_time = int((time.time() - start_time) * 1000)
+            
+            # Extract text
+            if isinstance(transcription_result, dict) and 'text' in transcription_result:
+                transcription_text = transcription_result['text']
+            else:
+                transcription_text = str(transcription_result)
+            
+            all_transcriptions.append(transcription_text)
+            
+            # Save to file
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            safe_filename = secure_filename(original_filename.rsplit('.', 1)[0])
+            transcription_filename = f"{timestamp}_{safe_filename}.txt"
+            transcription_path = os.path.join(TRANSCRIPTIONS_FOLDER, transcription_filename)
+            
+            with open(transcription_path, 'w', encoding='utf-8') as f:
+                f.write(f"Transcription of: {original_filename}\n")
+                f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Processing time: {processing_time}ms\n")
+                f.write(f"{'-' * 80}\n\n")
+                f.write(transcription_text)
+            
+            logger.info(f"Audio transcription saved to: {transcription_path}")
+            
+            # Clean up
+            os.remove(filepath)
+            
+        except Exception as e:
+            logger.error(f"Error processing {original_filename}: {str(e)}")
+            all_transcriptions.append(f"Error processing {original_filename}: {str(e)}")
+            if os.path.exists(filepath):
+                os.remove(filepath)
+    
+    result_text = '\n\n'.join(all_transcriptions) if all_transcriptions else "No transcriptions generated"
+    
+    return jsonify({
+        'success': True,
+        'transcription': {'text': result_text},
+        'message': 'Audio transcription completed'
+    })
+
 def process_youtube_directly(source_url, data):
     """Process YouTube URL directly without database/job tracking"""
     from datetime import datetime
@@ -416,7 +490,12 @@ def api_process():
             except:
                 llm_config = {}
             
-            # Create processing job
+            # If database unavailable, process files directly
+            if not DB_AVAILABLE and input_type == 'audio-video':
+                logger.info("Processing audio files directly without database")
+                return process_audio_files_directly(files)
+            
+            # Create processing job (requires database)
             job = ProcessingJob(
                 job_type='transcription' if input_type == 'audio-video' else 'document_processing',
                 input_type='file',
@@ -473,12 +552,16 @@ def api_process():
                     return jsonify({'error': 'Invalid YouTube URL'}), 400
                 
                 # If database unavailable, process directly without job tracking
+                logger.info(f"YouTube processing - DB_AVAILABLE: {DB_AVAILABLE}")
                 if not DB_AVAILABLE:
+                    logger.info(f"Processing YouTube directly without database: {source_url}")
                     try:
                         return process_youtube_directly(source_url, data)
                     except Exception as e:
                         logger.error(f"YouTube processing failed: {str(e)}")
                         return jsonify({'error': f"YouTube processing failed: {str(e)}"}), 500
+                
+                logger.info(f"Creating ProcessingJob for YouTube: {source_url}")
                 
                 # Extract YouTube processing options and LLM config
                 youtube_options = data.get('youtubeOptions', {})
@@ -513,17 +596,21 @@ def api_process():
             else:
                 return jsonify({'error': 'Unsupported input type'}), 400
             
-            db.session.add(job)
-            db.session.commit()
-            
-            # Start background processing
-            process_job_async(job.id)
-            
-            return jsonify({
-                'success': True,
-                'job_id': job.id,
-                'message': 'Processing started'
-            })
+            try:
+                db.session.add(job)
+                db.session.commit()
+                
+                # Start background processing
+                process_job_async(job.id)
+                
+                return jsonify({
+                    'success': True,
+                    'job_id': job.id,
+                    'message': 'Processing started'
+                })
+            except Exception as db_error:
+                logger.error(f"Database error, cannot process with job tracking: {str(db_error)}")
+                return jsonify({'error': 'Database unavailable. Please use file upload instead of advanced features.'}), 503
             
     except Exception as e:
         logger.error(f"Error in API process: {str(e)}")
