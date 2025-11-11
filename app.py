@@ -507,17 +507,21 @@ def api_process():
                 return process_audio_files_directly(files)
             
             # Create processing job (requires database)
-            job = ProcessingJob(
-                job_type='transcription' if input_type == 'audio-video' else 'document_processing',
-                input_type='file',
-                target_language=target_language,
-                voice_id=voice_id,
-                output_formats=output_formats,
-                job_metadata={'llm': llm_config},
-                status='pending'
-            )
-            db.session.add(job)
-            db.session.flush()  # Get the job ID
+            try:
+                job = ProcessingJob(
+                    job_type='transcription' if input_type == 'audio-video' else 'document_processing',
+                    input_type='file',
+                    target_language=target_language,
+                    voice_id=voice_id,
+                    output_formats=output_formats,
+                    job_metadata={'llm': llm_config},
+                    status='pending'
+                )
+                db.session.add(job)
+                db.session.flush()  # Get the job ID
+            except Exception as db_err:
+                logger.error(f"Cannot create job - database unavailable: {str(db_err)}")
+                return jsonify({'error': 'Database required for advanced processing is unavailable. Processing failed.'}), 503
             
             # Process files
             processed_files = []
@@ -589,31 +593,39 @@ def api_process():
                 youtube_options = data.get('youtubeOptions', {})
                 llm_config = data.get('llm', {})
                 
-                job = ProcessingJob(
-                    job_type='transcription',
-                    input_type='youtube',
-                    source_url=source_url,
-                    target_language=target_language,
-                    voice_id=voice_id,
-                    output_formats=output_formats,
-                    job_metadata={'youtubeOptions': youtube_options, 'llm': llm_config},
-                    status='pending'
-                )
+                try:
+                    job = ProcessingJob(
+                        job_type='transcription',
+                        input_type='youtube',
+                        source_url=source_url,
+                        target_language=target_language,
+                        voice_id=voice_id,
+                        output_formats=output_formats,
+                        job_metadata={'youtubeOptions': youtube_options, 'llm': llm_config},
+                        status='pending'
+                    )
+                except Exception as db_err:
+                    logger.error(f"Cannot create YouTube job - database unavailable: {str(db_err)}")
+                    return jsonify({'error': 'Database required for job tracking is unavailable.'}), 503
                 
             elif input_type == 'text':
                 input_text = data.get('input_text')
                 if not input_text or not input_text.strip():
                     return jsonify({'error': 'No text provided'}), 400
                 
-                job = ProcessingJob(
-                    job_type='tts',
-                    input_type='text',
-                    input_text=input_text,
-                    target_language=target_language,
-                    voice_id=voice_id,
-                    output_formats=['mp3'],  # TTS always outputs audio
-                    status='pending'
-                )
+                try:
+                    job = ProcessingJob(
+                        job_type='tts',
+                        input_type='text',
+                        input_text=input_text,
+                        target_language=target_language,
+                        voice_id=voice_id,
+                        output_formats=['mp3'],  # TTS always outputs audio
+                        status='pending'
+                    )
+                except Exception as db_err:
+                    logger.error(f"Cannot create TTS job - database unavailable: {str(db_err)}")
+                    return jsonify({'error': 'Database required for TTS processing is unavailable.'}), 503
                 
             else:
                 return jsonify({'error': 'Unsupported input type'}), 400
