@@ -387,7 +387,8 @@ def process_youtube_directly(source_url, data):
     
     youtube_options = data.get('youtubeOptions', {})
     pull_transcript = youtube_options.get('pullTranscript', True)
-    transcribe_audio = youtube_options.get('transcribeAudio', False)
+    # Disable audio transcription due to YouTube 403 blocking
+    transcribe_audio = False  # Force disabled - audio downloads are blocked by YouTube
     
     all_transcriptions = []
     transcript_sources = []
@@ -401,12 +402,16 @@ def process_youtube_directly(source_url, data):
             logger.info(f"Successfully extracted YouTube transcript")
         else:
             logger.info(f"No transcript available: {transcript_result['error']}")
-            if not transcribe_audio:
-                transcribe_audio = True
-                logger.info("Automatically enabling audio transcription as fallback")
+            # Don't enable audio fallback - it's blocked by YouTube
+            logger.warning("YouTube transcript not available and audio download is disabled")
     
-    # Transcribe from audio if requested or as fallback
-    if transcribe_audio or not all_transcriptions:
+    # Skip audio download - YouTube blocks it with 403 errors
+    # Only process if we have transcripts
+    if not all_transcriptions:
+        raise Exception("No YouTube transcript available for this video. Audio download is disabled due to YouTube blocking.")
+    
+    # This code is disabled to prevent 403 errors and 30+ minute downloads
+    if False and (transcribe_audio or not all_transcriptions):
         try:
             audio_files = download_youtube_audio(source_url)
             
