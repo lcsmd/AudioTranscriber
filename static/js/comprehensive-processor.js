@@ -343,7 +343,7 @@ async function processFiles() {
             } else if (result.transcription) {
                 // Direct result - display immediately
                 updateProgress(100, 'Processing completed!');
-                displayResults(result.transcription);
+                showResults({ result_text: result.transcription.text, status: 'completed' });
             } else {
                 throw new Error('Invalid response format');
             }
@@ -396,7 +396,7 @@ async function processYouTube() {
             } else if (result.transcription) {
                 // Direct result - display immediately
                 updateProgress(100, 'Processing completed!');
-                displayResults(result.transcription);
+                showResults({ result_text: result.transcription.text, status: 'completed' });
             } else {
                 throw new Error('Invalid response format');
             }
@@ -443,7 +443,7 @@ async function processText() {
             } else if (result.transcription) {
                 // Direct result - display immediately
                 updateProgress(100, 'Processing completed!');
-                displayResults(result.transcription);
+                showResults({ result_text: result.transcription.text, status: 'completed' });
             } else {
                 throw new Error('Invalid response format');
             }
@@ -483,7 +483,7 @@ async function processDocument() {
             } else if (result.transcription) {
                 // Direct result - display immediately
                 updateProgress(100, 'Processing completed!');
-                displayResults(result.transcription);
+                showResults({ result_text: result.transcription.text, status: 'completed' });
             } else {
                 throw new Error('Invalid response format');
             }
