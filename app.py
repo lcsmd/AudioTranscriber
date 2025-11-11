@@ -46,12 +46,16 @@ if db_url:
     # Initialize the database
     db.init_app(app)
     
-    # Create database tables
-    with app.app_context():
-        db.create_all()
-        logger.info("Database tables created successfully")
+    # Create database tables (retry on failure)
+    try:
+        with app.app_context():
+            db.create_all()
+            logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        logger.warning("Application will continue without database support")
 else:
-    logger.error("DATABASE_URL environment variable is not set!")
+    logger.warning("DATABASE_URL environment variable is not set! Application will run without database support")
 
 # Configure upload folder
 UPLOAD_FOLDER = tempfile.gettempdir()
