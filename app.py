@@ -308,75 +308,121 @@ def api_transcription_history():
         logger.error(f"Error fetching history: {str(e)}")
         return jsonify({'jobs': [], 'error': str(e)}), 500
 
+# Global dictionary to track processing progress
+processing_progress = {}
+
 def process_audio_files_directly(files):
     """Process audio files directly without database/job tracking"""
     from datetime import datetime
+    import threading
     
-    logger.info(f"Processing {len(files)} audio files directly")
+    # Generate a unique job ID for tracking
+    job_id = str(uuid.uuid4())
+    processing_progress[job_id] = {
+        'status': 'processing',
+        'progress': 0,
+        'message': 'Starting...',
+        'result': None
+    }
     
-    all_transcriptions = []
+    logger.info(f"Processing {len(files)} audio files directly - Job ID: {job_id}")
     
-    for file in files:
-        if not file.filename or not allowed_file(file.filename, 'audio'):
-            continue
-            
-        original_filename = secure_filename(file.filename)
-        file_extension = original_filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"{uuid.uuid4()}.{file_extension}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(filepath)
-        
+    # Start processing in background thread
+    def process_async():
+        all_transcriptions = []
         try:
-            # Convert MP3 to WAV if needed
-            if file_extension == 'mp3':
-                wav_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{uuid.uuid4()}.wav")
-                convert_mp3_to_wav(filepath, wav_filepath)
-                os.remove(filepath)
-                filepath = wav_filepath
+            processing_progress[job_id]['progress'] = 10
+            processing_progress[job_id]['message'] = 'Preparing files...'
+    
+            total_files = len([f for f in files if f.filename and allowed_file(f.filename, 'audio')])
+            current_file = 0
             
-            # Transcribe
-            start_time = time.time()
-            transcription_result = send_to_whisper(filepath)
-            processing_time = int((time.time() - start_time) * 1000)
+            for file in files:
+                if not file.filename or not allowed_file(file.filename, 'audio'):
+                    continue
+                
+                current_file += 1
+                original_filename = secure_filename(file.filename)
+                file_extension = original_filename.rsplit('.', 1)[1].lower()
+                unique_filename = f"{uuid.uuid4()}.{file_extension}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                file.save(filepath)
+                
+                processing_progress[job_id]['progress'] = 20 + (current_file - 1) * 60 // total_files
+                processing_progress[job_id]['message'] = f'Processing file {current_file}/{total_files}: {original_filename}'
+                
+                try:
+                    # Convert MP3 to WAV if needed
+                    if file_extension == 'mp3':
+                        wav_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{uuid.uuid4()}.wav")
+                        convert_mp3_to_wav(filepath, wav_filepath)
+                        os.remove(filepath)
+                        filepath = wav_filepath
+                    
+                    processing_progress[job_id]['message'] = f'Transcribing {current_file}/{total_files}: {original_filename}'
+                    
+                    # Transcribe
+                    start_time = time.time()
+                    transcription_result = send_to_whisper(filepath)
+                    processing_time = int((time.time() - start_time) * 1000)
+                    
+                    # Extract text
+                    if isinstance(transcription_result, dict) and 'text' in transcription_result:
+                        transcription_text = transcription_result['text']
+                    else:
+                        transcription_text = str(transcription_result)
+                    
+                    all_transcriptions.append(transcription_text)
+                    
+                    processing_progress[job_id]['message'] = f'Saving {current_file}/{total_files}: {original_filename}'
+                    
+                    # Save to file
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    safe_filename = secure_filename(original_filename.rsplit('.', 1)[0])
+                    transcription_filename = f"{timestamp}_{safe_filename}.txt"
+                    transcription_path = os.path.join(TRANSCRIPTIONS_FOLDER, transcription_filename)
+                    
+                    with open(transcription_path, 'w', encoding='utf-8') as f:
+                        f.write(f"Transcription of: {original_filename}\n")
+                        f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                        f.write(f"Processing time: {processing_time}ms\n")
+                        f.write(f"{'-' * 80}\n\n")
+                        f.write(transcription_text)
+                    
+                    logger.info(f"Audio transcription saved to: {transcription_path}")
+                    
+                    # Clean up
+                    os.remove(filepath)
+                    
+                except Exception as e:
+                    logger.error(f"Error processing {original_filename}: {str(e)}")
+                    all_transcriptions.append(f"Error processing {original_filename}: {str(e)}")
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
             
-            # Extract text
-            if isinstance(transcription_result, dict) and 'text' in transcription_result:
-                transcription_text = transcription_result['text']
-            else:
-                transcription_text = str(transcription_result)
+            result_text = '\n\n'.join(all_transcriptions) if all_transcriptions else "No transcriptions generated"
             
-            all_transcriptions.append(transcription_text)
-            
-            # Save to file
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            safe_filename = secure_filename(original_filename.rsplit('.', 1)[0])
-            transcription_filename = f"{timestamp}_{safe_filename}.txt"
-            transcription_path = os.path.join(TRANSCRIPTIONS_FOLDER, transcription_filename)
-            
-            with open(transcription_path, 'w', encoding='utf-8') as f:
-                f.write(f"Transcription of: {original_filename}\n")
-                f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Processing time: {processing_time}ms\n")
-                f.write(f"{'-' * 80}\n\n")
-                f.write(transcription_text)
-            
-            logger.info(f"Audio transcription saved to: {transcription_path}")
-            
-            # Clean up
-            os.remove(filepath)
+            # Mark as complete
+            processing_progress[job_id]['status'] = 'completed'
+            processing_progress[job_id]['progress'] = 100
+            processing_progress[job_id]['message'] = 'Transcription completed!'
+            processing_progress[job_id]['result'] = {'text': result_text}
             
         except Exception as e:
-            logger.error(f"Error processing {original_filename}: {str(e)}")
-            all_transcriptions.append(f"Error processing {original_filename}: {str(e)}")
-            if os.path.exists(filepath):
-                os.remove(filepath)
+            logger.error(f"Error in async processing: {str(e)}")
+            processing_progress[job_id]['status'] = 'failed'
+            processing_progress[job_id]['message'] = f'Error: {str(e)}'
     
-    result_text = '\n\n'.join(all_transcriptions) if all_transcriptions else "No transcriptions generated"
+    # Start background thread
+    thread = threading.Thread(target=process_async)
+    thread.daemon = True
+    thread.start()
     
+    # Return job ID for polling
     return jsonify({
         'success': True,
-        'transcription': {'text': result_text},
-        'message': 'Audio transcription completed'
+        'job_id': job_id,
+        'message': 'Processing started'
     })
 
 def process_youtube_directly(source_url, data):
@@ -637,9 +683,27 @@ def api_process():
         logger.error(f"Error in API process: {str(e)}")
         return jsonify({'error': f"Processing failed: {str(e)}"}), 500
 
-@app.route('/api/job-status/<int:job_id>', methods=['GET'])
+@app.route('/api/job-status/<job_id>', methods=['GET'])
 def api_job_status(job_id):
     """Get the status of a processing job"""
+    # Check in-memory progress first (for direct processing)
+    if job_id in processing_progress:
+        progress = processing_progress[job_id]
+        return jsonify({
+            'job_id': job_id,
+            'status': progress['status'],
+            'progress_percentage': progress['progress'],
+            'status_message': progress['message'],
+            'result_text': progress['result']['text'] if progress.get('result') else None,
+            'result_files': [],
+            'error_message': None,
+            'processing_time': None
+        })
+    
+    # Fallback to database job (if available)
+    if not DB_AVAILABLE:
+        return jsonify({'error': 'Job not found'}), 404
+    
     try:
         job = ProcessingJob.query.get_or_404(job_id)
         
