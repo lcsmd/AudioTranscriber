@@ -464,8 +464,8 @@ def api_process():
     try:
         # Determine input type and extract data
         if request.content_type and 'multipart/form-data' in request.content_type:
-            # File upload
-            input_type = request.form.get('input_type', 'audio-video')
+            # File upload - always treat as audio-video for direct processing
+            input_type = 'audio-video'  # Force audio processing to avoid DB
             target_language = request.form.get('target_language', 'en')
             voice_id = request.form.get('voice_id', 'google_en')
             output_formats = request.form.get('output_formats', '["text"]')
