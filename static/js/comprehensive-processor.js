@@ -336,8 +336,17 @@ async function processFiles() {
         const result = await response.json();
         
         if (result.success) {
-            appState.currentJobId = result.job_id;
-            pollJobStatus(result.job_id);
+            // Check if result is immediate (no job_id) or requires polling
+            if (result.job_id) {
+                appState.currentJobId = result.job_id;
+                pollJobStatus(result.job_id);
+            } else if (result.transcription) {
+                // Direct result - display immediately
+                updateProgress(100, 'Processing completed!');
+                displayResults(result.transcription);
+            } else {
+                throw new Error('Invalid response format');
+            }
         } else {
             throw new Error(result.error || 'Processing failed');
         }
@@ -380,8 +389,17 @@ async function processYouTube() {
         const result = await response.json();
         
         if (result.success) {
-            appState.currentJobId = result.job_id;
-            pollJobStatus(result.job_id);
+            // Check if result is immediate (no job_id) or requires polling
+            if (result.job_id) {
+                appState.currentJobId = result.job_id;
+                pollJobStatus(result.job_id);
+            } else if (result.transcription) {
+                // Direct result - display immediately
+                updateProgress(100, 'Processing completed!');
+                displayResults(result.transcription);
+            } else {
+                throw new Error('Invalid response format');
+            }
         } else {
             throw new Error(result.error || 'Processing failed');
         }
@@ -418,8 +436,17 @@ async function processText() {
         const result = await response.json();
         
         if (result.success) {
-            appState.currentJobId = result.job_id;
-            pollJobStatus(result.job_id);
+            // Check if result is immediate (no job_id) or requires polling
+            if (result.job_id) {
+                appState.currentJobId = result.job_id;
+                pollJobStatus(result.job_id);
+            } else if (result.transcription) {
+                // Direct result - display immediately
+                updateProgress(100, 'Processing completed!');
+                displayResults(result.transcription);
+            } else {
+                throw new Error('Invalid response format');
+            }
         } else {
             throw new Error(result.error || 'Processing failed');
         }
@@ -449,8 +476,17 @@ async function processDocument() {
         const result = await response.json();
         
         if (result.success) {
-            appState.currentJobId = result.job_id;
-            pollJobStatus(result.job_id);
+            // Check if result is immediate (no job_id) or requires polling
+            if (result.job_id) {
+                appState.currentJobId = result.job_id;
+                pollJobStatus(result.job_id);
+            } else if (result.transcription) {
+                // Direct result - display immediately
+                updateProgress(100, 'Processing completed!');
+                displayResults(result.transcription);
+            } else {
+                throw new Error('Invalid response format');
+            }
         } else {
             throw new Error(result.error || 'Processing failed');
         }
