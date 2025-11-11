@@ -482,13 +482,46 @@ def process_youtube_directly(source_url, data):
             logger.info(f"Successfully extracted YouTube transcript")
         else:
             logger.info(f"No transcript available: {transcript_result['error']}")
-            # Don't enable audio fallback - it's blocked by YouTube
-            logger.warning("YouTube transcript not available and audio download is disabled")
+            # Enable audio fallback if transcript not available
+            logger.info("YouTube transcript not available - will download and transcribe audio")
+            transcribe_audio = True
     
-    # Skip audio download - YouTube blocks it with 403 errors
-    # Only process if we have transcripts
+    # If no transcript, download video and transcribe
+    if not all_transcriptions and transcribe_audio:
+        try:
+            logger.info("Downloading YouTube video for transcription...")
+            audio_files = download_youtube_audio(source_url)
+            
+            if audio_files:
+                for audio_file in audio_files:
+                    try:
+                        logger.info(f"Transcribing downloaded YouTube audio: {audio_file}")
+                        transcription_result = send_to_whisper(audio_file)
+                        
+                        if isinstance(transcription_result, dict) and 'text' in transcription_result:
+                            transcription_text = transcription_result['text']
+                        else:
+                            transcription_text = str(transcription_result)
+                        
+                        all_transcriptions.append(transcription_text)
+                        transcript_sources.append("Audio Transcription (Whisper)")
+                        
+                        # Clean up downloaded file
+                        if os.path.exists(audio_file):
+                            os.remove(audio_file)
+                    except Exception as e:
+                        logger.error(f"Error transcribing YouTube audio: {str(e)}")
+                        if os.path.exists(audio_file):
+                            os.remove(audio_file)
+                        raise
+        except Exception as e:
+            logger.error(f"Error downloading/transcribing YouTube video: {str(e)}")
+            if not all_transcriptions:
+                raise Exception(f"Failed to get transcript: No YouTube transcript available and audio download/transcription failed: {str(e)}")
+    
+    # Only raise error if we have no transcriptions at all
     if not all_transcriptions:
-        raise Exception("No YouTube transcript available for this video. Audio download is disabled due to YouTube blocking.")
+        raise Exception("No YouTube transcript available for this video and audio transcription was not enabled.")
     
     # This code is disabled to prevent 403 errors and 30+ minute downloads
     if False and (transcribe_audio or not all_transcriptions):
