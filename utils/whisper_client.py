@@ -14,13 +14,14 @@ WHISPER_SERVER = "10.1.10.20"
 WHISPER_USERNAME = "lawr"
 WHISPER_PASSWORD = "apgar-66"
 
-def send_to_whisper(audio_file_path, language='en'):
+def send_to_whisper(audio_file_path, language='en', progress_callback=None):
     """
     Send an audio file to the faster-whisper script for transcription
     
     Args:
         audio_file_path (str): Path to the audio file (WAV, MP3, etc.)
         language (str): Target language for transcription
+        progress_callback: Optional callback function(processed_seconds, total_seconds) for progress updates
     
     Returns:
         dict: The transcription result from the whisper script
@@ -38,7 +39,7 @@ def send_to_whisper(audio_file_path, language='en'):
             return _process_with_local_script(audio_file_path, language)
         except Exception as e:
             logger.warning(f"Local script processing failed: {str(e)}, falling back to faster-whisper library")
-            return _process_locally(audio_file_path, language)
+            return _process_locally(audio_file_path, language, progress_callback)
     
     # Check if SSH is available for remote GPU server connection
     ssh_available = False
@@ -55,9 +56,9 @@ def send_to_whisper(audio_file_path, language='en'):
             return _process_with_gpu_server(audio_file_path, language)
         except Exception as e:
             logger.warning(f"GPU server processing failed: {str(e)}, falling back to local processing")
-            return _process_locally(audio_file_path, language)
+            return _process_locally(audio_file_path, language, progress_callback)
     else:
-        return _process_locally(audio_file_path, language)
+        return _process_locally(audio_file_path, language, progress_callback)
 
 def _process_with_local_script(audio_file_path, language='en'):
     """Process audio file using local faster-whisper script"""
@@ -151,7 +152,7 @@ def _process_with_gpu_server(audio_file_path, language='en'):
         logger.error(f"Failed to parse GPU server response: {result.stdout}")
         raise Exception(f"Invalid response from GPU server: {str(e)}")
 
-def _process_locally(audio_file_path, language='en'):
+def _process_locally(audio_file_path, language='en', progress_callback=None):
     """Process audio file using local faster-whisper"""
     logger.info(f"Processing file {audio_file_path} with local faster-whisper")
     
@@ -171,9 +172,10 @@ def _process_locally(audio_file_path, language='en'):
             task="transcribe"
         )
         
-        # Extract text and segments
+        # Extract text and segments, updating progress as we go
         transcription_text = ""
         segment_list = []
+        total_duration = info.duration if hasattr(info, 'duration') else None
         
         for segment in segments:
             transcription_text += segment.text + " "
@@ -182,6 +184,10 @@ def _process_locally(audio_file_path, language='en'):
                 "end": segment.end,
                 "text": segment.text
             })
+            
+            # Report progress if callback provided
+            if progress_callback and total_duration:
+                progress_callback(segment.end, total_duration)
         
         processing_time = time.time() - start_time
         

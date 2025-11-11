@@ -322,7 +322,10 @@ def process_audio_files_directly(files):
         'status': 'processing',
         'progress': 0,
         'message': 'Starting...',
-        'result': None
+        'result': None,
+        'start_time': time.time(),
+        'file_duration': None,
+        'processed_duration': 0
     }
     
     logger.info(f"Processing {len(files)} audio files directly - Job ID: {job_id}")
@@ -361,10 +364,36 @@ def process_audio_files_directly(files):
                     
                     processing_progress[job_id]['message'] = f'Transcribing {current_file}/{total_files}: {original_filename}'
                     
-                    # Transcribe
-                    start_time = time.time()
-                    transcription_result = send_to_whisper(filepath)
-                    processing_time = int((time.time() - start_time) * 1000)
+                    # Get audio duration
+                    try:
+                        import subprocess
+                        duration_result = subprocess.run(
+                            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', 
+                             '-of', 'default=noprint_wrappers=1:nokey=1', filepath],
+                            capture_output=True, text=True, timeout=10
+                        )
+                        if duration_result.returncode == 0:
+                            duration_seconds = float(duration_result.stdout.strip())
+                            processing_progress[job_id]['file_duration'] = duration_seconds
+                            hours = int(duration_seconds // 3600)
+                            minutes = int((duration_seconds % 3600) // 60)
+                            seconds = int(duration_seconds % 60)
+                            duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}" if hours > 0 else f"{minutes:02d}:{seconds:02d}"
+                            logger.info(f"Audio duration: {duration_str}")
+                    except Exception as e:
+                        logger.warning(f"Could not get audio duration: {str(e)}")
+                    
+                    # Transcribe with progress callback
+                    transcribe_start = time.time()
+                    
+                    def update_transcription_progress(processed_seconds, total_seconds):
+                        processing_progress[job_id]['processed_duration'] = processed_seconds
+                        if total_seconds > 0:
+                            transcribe_progress = (processed_seconds / total_seconds) * 60
+                            processing_progress[job_id]['progress'] = 20 + int(transcribe_progress)
+                    
+                    transcription_result = send_to_whisper(filepath, language='en', progress_callback=update_transcription_progress)
+                    processing_time = int((time.time() - transcribe_start) * 1000)
                     
                     # Extract text
                     if isinstance(transcription_result, dict) and 'text' in transcription_result:
@@ -689,15 +718,47 @@ def api_job_status(job_id):
     # Check in-memory progress first (for direct processing)
     if job_id in processing_progress:
         progress = processing_progress[job_id]
+        
+        # Calculate time information
+        elapsed_time = time.time() - progress['start_time']
+        
+        # Build status message with time info
+        status_message = progress['message']
+        if progress.get('file_duration'):
+            duration = progress['file_duration']
+            processed = progress.get('processed_duration', 0)
+            
+            # Format durations
+            def format_time(seconds):
+                h = int(seconds // 3600)
+                m = int((seconds % 3600) // 60)
+                s = int(seconds % 60)
+                if h > 0:
+                    return f"{h}h {m}m {s}s"
+                elif m > 0:
+                    return f"{m}m {s}s"
+                else:
+                    return f"{s}s"
+            
+            # Estimate remaining time based on processing speed
+            if processed > 0 and elapsed_time > 0:
+                processing_speed = processed / elapsed_time  # seconds of audio per second of processing
+                remaining_audio = duration - processed
+                estimated_remaining = remaining_audio / processing_speed if processing_speed > 0 else 0
+                
+                status_message += f"\n📊 Duration: {format_time(duration)} | Processed: {format_time(processed)} | Remaining: ~{format_time(estimated_remaining)}"
+            else:
+                status_message += f"\n📊 Total duration: {format_time(duration)} | Analyzing..."
+        
         return jsonify({
             'job_id': job_id,
             'status': progress['status'],
             'progress_percentage': progress['progress'],
-            'status_message': progress['message'],
+            'status_message': status_message,
             'result_text': progress['result']['text'] if progress.get('result') else None,
             'result_files': [],
             'error_message': None,
-            'processing_time': None
+            'processing_time': int(elapsed_time * 1000)
         })
     
     # Fallback to database job (if available)
