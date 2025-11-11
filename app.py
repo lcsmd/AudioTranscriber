@@ -66,6 +66,11 @@ ALL_ALLOWED_EXTENSIONS = ALLOWED_AUDIO_EXTENSIONS.union(ALLOWED_DOCUMENT_EXTENSI
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit
 
+# Configure transcriptions folder for file-based storage
+TRANSCRIPTIONS_FOLDER = os.environ.get('TRANSCRIPTIONS_FOLDER', '/var/www/speech-app/transcriptions')
+os.makedirs(TRANSCRIPTIONS_FOLDER, exist_ok=True)
+logger.info(f"Transcriptions will be saved to: {TRANSCRIPTIONS_FOLDER}")
+
 # Database availability flag
 DB_AVAILABLE = False
 try:
@@ -212,6 +217,25 @@ def upload_file():
                     db.session.commit()
                 except Exception as e:
                     logger.warning(f"Could not update database: {str(e)}")
+            
+            # Save transcription to file
+            try:
+                from datetime import datetime
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                safe_filename = secure_filename(original_filename.rsplit('.', 1)[0])
+                transcription_filename = f"{timestamp}_{safe_filename}.txt"
+                transcription_path = os.path.join(TRANSCRIPTIONS_FOLDER, transcription_filename)
+                
+                with open(transcription_path, 'w', encoding='utf-8') as f:
+                    f.write(f"Transcription of: {original_filename}\n")
+                    f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"Processing time: {processing_time}ms\n")
+                    f.write(f"{'-' * 80}\n\n")
+                    f.write(transcription_text)
+                
+                logger.info(f"Transcription saved to: {transcription_path}")
+            except Exception as e:
+                logger.warning(f"Could not save transcription to file: {str(e)}")
             
             # Clean up the audio file
             os.remove(filepath)
