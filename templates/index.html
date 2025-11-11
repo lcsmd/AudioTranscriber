@@ -3,501 +3,844 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Transcriber</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-        
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        
-        .upload-area {
-            border: 3px dashed #667eea;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 20px;
-        }
-        
-        .upload-area:hover {
-            border-color: #764ba2;
-            background: #f8f9ff;
-        }
-        
-        .upload-area.dragging {
-            border-color: #764ba2;
-            background: #f0f2ff;
-        }
-        
-        .upload-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-        }
-        
-        .file-info {
-            display: none;
-            padding: 15px;
-            background: #f0f2ff;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        
-        .file-info.visible {
-            display: block;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 15px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-        
-        .progress-section {
-            display: none;
-            margin-top: 30px;
-        }
-        
-        .progress-section.visible {
-            display: block;
-        }
-        
-        .progress-header {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #667eea;
-        }
-        
-        .progress-bar-container {
-            width: 100%;
-            height: 40px;
-            background: #e0e7ff;
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 15px;
-            position: relative;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            width: 0%;
-            transition: width 0.5s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-        }
-        
-        .progress-details {
-            background: #f8f9ff;
-            padding: 20px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.95rem;
-        }
-        
-        .progress-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e0e7ff;
-        }
-        
-        .progress-row:last-child {
-            border-bottom: none;
-        }
-        
-        .progress-label {
-            font-weight: 600;
-            color: #667eea;
-        }
-        
-        .progress-value {
-            color: #333;
-        }
-        
-        .result-section {
-            display: none;
-            margin-top: 30px;
-        }
-        
-        .result-section.visible {
-            display: block;
-        }
-        
-        .result-text {
-            background: #f8f9ff;
-            padding: 20px;
-            border-radius: 8px;
-            max-height: 400px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            font-family: 'Georgia', serif;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn-secondary {
-            background: #64748b;
-            color: white;
-        }
-        
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-        
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-    </style>
+    <title>Speech Processing Service</title>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+
+<style>
+    :root {
+        --primary-color: #2563eb;
+        --primary-dark: #1d4ed8;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --danger-color: #ef4444;
+        --light-bg: #f8fafc;
+        --border-color: #e2e8f0;
+        --text-muted: #64748b;
+        --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    body {
+        background: #f1f5f9;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    .main-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .page-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    .page-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+    }
+    
+    .page-header p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+    
+    /* Step Indicator */
+    .step-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 2rem 0 3rem 0;
+        position: relative;
+    }
+    
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        flex: 1;
+        max-width: 200px;
+    }
+    
+    .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .step.active .step-number {
+        background: var(--primary-color);
+        color: white;
+        transform: scale(1.1);
+    }
+    
+    .step.completed .step-number {
+        background: var(--success-color);
+        color: white;
+    }
+    
+    .step-label {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    
+    .step.active .step-label {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+    
+    .step-line {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        right: -50%;
+        height: 2px;
+        background: #e2e8f0;
+        z-index: 1;
+    }
+    
+    .step:last-child .step-line {
+        display: none;
+    }
+    
+    .step.completed .step-line {
+        background: var(--success-color);
+    }
+    
+    /* Card Styles */
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s;
+    }
+    
+    .card.hidden {
+        display: none;
+    }
+    
+    .card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .card-header h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .card-header .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+    
+    /* Input Type Selection */
+    .input-type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .input-type-card {
+        background: var(--light-bg);
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .input-type-card:hover {
+        border-color: var(--primary-color);
+        background: white;
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+    }
+    
+    .input-type-card.selected {
+        border-color: var(--primary-color);
+        background: #eff6ff;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    
+    .input-type-card i {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        margin-bottom: 0.75rem;
+    }
+    
+    .input-type-card h4 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 0;
+        color: #1e293b;
+    }
+    
+    .input-type-card p {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin: 0.5rem 0 0 0;
+    }
+    
+    /* Input Areas */
+    .input-area {
+        display: none;
+        animation: fadeIn 0.3s;
+    }
+    
+    .input-area.active {
+        display: block;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .drop-zone {
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        padding: 3rem 2rem;
+        text-align: center;
+        background: var(--light-bg);
+        transition: all 0.3s;
+    }
+    
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+        border-color: var(--primary-color);
+        background: #eff6ff;
+    }
+    
+    .drop-zone i {
+        font-size: 3rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+    
+    /* Accordion */
+    .accordion-item {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+    
+    .accordion-header {
+        background: var(--light-bg);
+        padding: 1rem 1.5rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s;
+    }
+    
+    .accordion-header:hover {
+        background: #e2e8f0;
+    }
+    
+    .accordion-header h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .accordion-icon {
+        transition: transform 0.3s;
+    }
+    
+    .accordion-item.expanded .accordion-icon {
+        transform: rotate(180deg);
+    }
+    
+    .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    
+    .accordion-item.expanded .accordion-content {
+        max-height: 1000px;
+    }
+    
+    .accordion-body {
+        padding: 1.5rem;
+    }
+    
+    /* Form Controls */
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        display: block;
+        font-weight: 500;
+        color: #334155;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    
+    .toggle-switch {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--light-bg);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .toggle-switch:hover {
+        background: #e2e8f0;
+    }
+    
+    .toggle-switch input[type="checkbox"] {
+        width: 48px;
+        height: 24px;
+        position: relative;
+        -webkit-appearance: none;
+        background: #cbd5e1;
+        outline: none;
+        border-radius: 24px;
+        transition: 0.3s;
+        cursor: pointer;
+    }
+    
+    .toggle-switch input[type="checkbox"]:checked {
+        background: var(--primary-color);
+    }
+    
+    .toggle-switch input[type="checkbox"]:before {
+        content: '';
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        top: 2px;
+        left: 2px;
+        background: white;
+        transition: 0.3s;
+    }
+    
+    .toggle-switch input[type="checkbox"]:checked:before {
+        left: 26px;
+    }
+    
+    /* Buttons */
+    .btn {
+        padding: 0.75rem 2rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+    
+    .btn-secondary {
+        background: #64748b;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #475569;
+    }
+    
+    .btn-success {
+        background: var(--success-color);
+        color: white;
+    }
+    
+    .btn-large {
+        padding: 1rem 3rem;
+        font-size: 1.125rem;
+    }
+    
+    .btn-block {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Progress */
+    .progress-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .progress-bar {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        height: 12px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+    
+    .progress-fill {
+        background: white;
+        height: 100%;
+        transition: width 0.3s;
+        border-radius: 12px;
+    }
+    
+    /* Results */
+    .result-preview {
+        background: var(--light-bg);
+        border-radius: 8px;
+        padding: 1.5rem;
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 1.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+    
+    .download-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .chip {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .chip:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+    
+    /* AI Enhancement Section */
+    .ai-enhancement {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 2rem;
+        color: white;
+        margin-top: 2rem;
+    }
+    
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .quick-action-btn {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+        font-weight: 600;
+    }
+    
+    .quick-action-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    /* Utilities */
+    .text-muted {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+    
+    .mt-2 { margin-top: 1rem; }
+    .mt-3 { margin-top: 1.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+    .mb-3 { margin-bottom: 1.5rem; }
+    
+    .hidden {
+        display: none !important;
+    }
+    
+    .alert {
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+    
+    .alert-danger {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+    
+    .alert-info {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+    }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎙️ Audio Transcriber</h1>
-            <p>Upload audio or video files for instant AI transcription</p>
+<div class="main-container">
+    <div class="page-header">
+        <h1>Speech Processing Service</h1>
+        <p>Transform audio, video, and text with AI-powered transcription and synthesis</p>
+    </div>
+    
+    <!-- Step Indicator -->
+    <div class="step-indicator">
+        <div class="step active" id="step-1">
+            <div class="step-number">1</div>
+            <div class="step-label">Select Input</div>
+            <div class="step-line"></div>
         </div>
-        
-        <div class="card">
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📁</div>
-                <h3>Drop your file here or click to browse</h3>
-                <p style="color: #64748b; margin-top: 10px;">Supports MP3, WAV, MP4, MOV up to 500MB</p>
-                <input type="file" id="fileInput" accept="audio/*,video/*" style="display: none;">
-            </div>
-            
-            <div class="file-info" id="fileInfo">
-                <strong>Selected:</strong> <span id="fileName"></span> (<span id="fileSize"></span>)
-            </div>
-            
-            <button class="btn btn-primary" id="transcribeBtn" disabled>
-                <span id="btnText">Select a file to begin</span>
-            </button>
-            
-            <div class="progress-section" id="progressSection">
-                <div class="progress-header">
-                    <span id="progressStatus">Processing...</span>
-                </div>
-                
-                <div class="progress-bar-container">
-                    <div class="progress-bar" id="progressBar">
-                        <span id="progressPercent">0%</span>
-                    </div>
-                </div>
-                
-                <div class="progress-details" id="progressDetails">
-                    <div class="progress-row">
-                        <span class="progress-label">Status:</span>
-                        <span class="progress-value" id="statusText">Initializing...</span>
-                    </div>
-                    <div class="progress-row">
-                        <span class="progress-label">File Duration:</span>
-                        <span class="progress-value" id="durationText">Detecting...</span>
-                    </div>
-                    <div class="progress-row">
-                        <span class="progress-label">Processed:</span>
-                        <span class="progress-value" id="processedText">0:00</span>
-                    </div>
-                    <div class="progress-row">
-                        <span class="progress-label">Remaining:</span>
-                        <span class="progress-value" id="remainingText">Calculating...</span>
-                    </div>
-                    <div class="progress-row">
-                        <span class="progress-label">Speed:</span>
-                        <span class="progress-value" id="speedText">--</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="result-section" id="resultSection">
-                <h3 style="margin-bottom: 15px; color: #10b981;">✅ Transcription Complete!</h3>
-                <div class="result-text" id="resultText"></div>
-                <div class="action-buttons">
-                    <button class="btn btn-success" id="downloadBtn">
-                        💾 Download Transcription
-                    </button>
-                    <button class="btn btn-secondary" id="newBtn">
-                        🔄 Transcribe Another
-                    </button>
-                </div>
-            </div>
+        <div class="step" id="step-2">
+            <div class="step-number">2</div>
+            <div class="step-label">Configure</div>
+            <div class="step-line"></div>
+        </div>
+        <div class="step" id="step-3">
+            <div class="step-number">3</div>
+            <div class="step-label">Process</div>
+            <div class="step-line"></div>
+        </div>
+        <div class="step" id="step-4">
+            <div class="step-number">4</div>
+            <div class="step-label">Results</div>
         </div>
     </div>
     
-    <script>
-        let currentJobId = null;
-        let pollInterval = null;
-        let selectedFile = null;
+    <!-- Step 1: Input Selection -->
+    <div class="card" id="input-selection-card">
+        <div class="card-header">
+            <h3><i class="fas fa-upload"></i> Select Your Input Type</h3>
+        </div>
         
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const transcribeBtn = document.getElementById('transcribeBtn');
-        const progressSection = document.getElementById('progressSection');
-        const resultSection = document.getElementById('resultSection');
+        <div class="input-type-grid">
+            <div class="input-type-card" data-type="file">
+                <i class="fas fa-file-audio"></i>
+                <h4>Audio/Video Files</h4>
+                <p>MP3, WAV, MP4, MOV</p>
+            </div>
+            <div class="input-type-card" data-type="youtube">
+                <i class="fab fa-youtube"></i>
+                <h4>YouTube</h4>
+                <p>Videos & Playlists</p>
+            </div>
+            <div class="input-type-card" data-type="text">
+                <i class="fas fa-keyboard"></i>
+                <h4>Text</h4>
+                <p>Text to Speech</p>
+            </div>
+            <div class="input-type-card" data-type="document">
+                <i class="fas fa-file-alt"></i>
+                <h4>Documents</h4>
+                <p>PDF, DOCX, TXT</p>
+            </div>
+        </div>
         
-        // Upload area interactions
-        uploadArea.addEventListener('click', () => fileInput.click());
+        <!-- File Upload Area -->
+        <div class="input-area" id="file-input-area">
+            <div class="drop-zone" id="file-drop-zone">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h4>Drop files here or click to browse</h4>
+                <p class="text-muted">Supported: MP3, WAV, MP4, MOV</p>
+                <input type="file" id="file-input" multiple accept=".mp3,.wav,.mp4,.mov" style="display: none;">
+            </div>
+            <div id="file-list" class="mt-2"></div>
+        </div>
         
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragging');
-        });
+        <!-- YouTube Input Area -->
+        <div class="input-area" id="youtube-input-area">
+            <div class="form-group">
+                <label class="form-label">YouTube URL</label>
+                <input type="url" id="youtube-url" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
+                <p class="text-muted mt-2">Supports videos and playlists</p>
+            </div>
+        </div>
         
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragging');
-        });
+        <!-- Text Input Area -->
+        <div class="input-area" id="text-input-area">
+            <div class="form-group">
+                <label class="form-label">Enter Text for Speech Synthesis</label>
+                <textarea id="text-input" class="form-control" rows="6" placeholder="Type or paste your text here..."></textarea>
+            </div>
+        </div>
         
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragging');
-            fileInput.files = e.dataTransfer.files;
-            handleFileSelect();
-        });
+        <!-- Document Upload Area -->
+        <div class="input-area" id="document-input-area">
+            <div class="drop-zone" id="document-drop-zone">
+                <i class="fas fa-file-upload"></i>
+                <h4>Upload Document</h4>
+                <p class="text-muted">Supported: PDF, DOCX, TXT</p>
+                <input type="file" id="document-input" accept=".pdf,.docx,.txt" style="display: none;">
+            </div>
+            <div id="document-info" class="mt-2"></div>
+        </div>
+    </div>
+    
+    <!-- Step 2: Configuration -->
+    <div class="card hidden" id="configuration-card">
+        <div class="card-header">
+            <h3><i class="fas fa-sliders-h"></i> Configure Options</h3>
+        </div>
         
-        fileInput.addEventListener('change', handleFileSelect);
+        <!-- Basic Options Accordion -->
+        <div class="accordion-item expanded">
+            <div class="accordion-header">
+                <h4><i class="fas fa-cog"></i> Basic Settings</h4>
+                <i class="fas fa-chevron-down accordion-icon"></i>
+            </div>
+            <div class="accordion-content">
+                <div class="accordion-body">
+                    <div id="basic-options"></div>
+                </div>
+            </div>
+        </div>
         
-        function handleFileSelect() {
-            if (fileInput.files.length > 0) {
-                selectedFile = fileInput.files[0];
-                const sizeMB = (selectedFile.size / (1024 * 1024)).toFixed(2);
-                
-                document.getElementById('fileName').textContent = selectedFile.name;
-                document.getElementById('fileSize').textContent = sizeMB + ' MB';
-                fileInfo.classList.add('visible');
-                
-                transcribeBtn.disabled = false;
-                document.getElementById('btnText').textContent = '🚀 Start Transcription';
-            }
-        }
+        <!-- Output Options (for transcription) -->
+        <div class="accordion-item" id="output-accordion">
+            <div class="accordion-header">
+                <h4><i class="fas fa-download"></i> Output Formats</h4>
+                <i class="fas fa-chevron-down accordion-icon"></i>
+            </div>
+            <div class="accordion-content">
+                <div class="accordion-body">
+                    <div class="form-group">
+                        <label class="form-label">Select Output Formats</label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="format-text" value="text" checked>
+                                <span>Plain Text</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="format-markdown" value="markdown">
+                                <span>Markdown</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="format-docx" value="docx">
+                                <span>Word Document</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="format-pdf" value="pdf">
+                                <span>PDF</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        transcribeBtn.addEventListener('click', startTranscription);
-        
-        async function startTranscription() {
-            if (!selectedFile) return;
-            
-            // Hide upload, show progress
-            uploadArea.style.display = 'none';
-            fileInfo.style.display = 'none';
-            transcribeBtn.disabled = true;
-            document.getElementById('btnText').innerHTML = '<span class="spinner"></span> Processing...';
-            progressSection.classList.add('visible');
-            
-            // Upload file
-            const formData = new FormData();
-            formData.append('audio_video_files', selectedFile);
-            
-            try {
-                const response = await fetch('/api/process', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.job_id) {
-                    currentJobId = data.job_id;
-                    startPolling();
-                } else if (data.transcription) {
-                    // Direct result
-                    showResult(data.transcription.text);
-                } else {
-                    throw new Error('Invalid response');
-                }
-            } catch (error) {
-                alert('Upload failed: ' + error.message);
-                resetUI();
-            }
-        }
-        
-        function startPolling() {
-            pollInterval = setInterval(checkProgress, 500);
-        }
-        
-        async function checkProgress() {
-            if (!currentJobId) return;
-            
-            try {
-                const response = await fetch(`/api/job-status/${currentJobId}`);
-                const data = await response.json();
-                
-                updateProgress(data);
-                
-                if (data.status === 'completed' || data.status === 'failed') {
-                    clearInterval(pollInterval);
+        <!-- AI Processing Toggle -->
+        <div class="accordion-item" id="ai-accordion">
+            <div class="accordion-header">
+                <h4><i class="fas fa-brain"></i> AI Processing (Optional)</h4>
+                <i class="fas fa-chevron-down accordion-icon"></i>
+            </div>
+            <div class="accordion-content">
+                <div class="accordion-body">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enable-ai-processing">
+                        <div>
+                            <strong>Process with AI</strong>
+                            <p class="text-muted" style="margin: 0;">Enhance results with AI-powered analysis</p>
+                        </div>
+                    </label>
                     
-                    if (data.status === 'completed' && data.result_text) {
-                        showResult(data.result_text);
-                    } else {
-                        alert('Transcription failed: ' + (data.error_message || 'Unknown error'));
-                        resetUI();
-                    }
-                }
-            } catch (error) {
-                console.error('Polling error:', error);
-            }
-        }
+                    <div id="ai-settings" class="hidden mt-3">
+                        <div class="form-group">
+                            <label class="form-label">Quick Prompts</label>
+                            <select id="suggested-prompts" class="form-select">
+                                <option value="">-- Select a suggested prompt --</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Custom Instructions</label>
+                            <textarea id="ai-prompt" class="form-control" rows="3" placeholder="What would you like the AI to do with this content?"></textarea>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">AI Model</label>
+                                <select id="ai-model" class="form-select">
+                                    <option value="llama2">Llama 2</option>
+                                    <option value="llama3">Llama 3</option>
+                                    <option value="mistral">Mistral</option>
+                                    <option value="codellama">Code Llama</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Save Options</label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="save-to-openqm">
+                                    <span>Save to Database</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <input type="checkbox" id="export-markdown">
+                                    <span>Export as Markdown</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        function updateProgress(data) {
-            const percent = data.progress_percentage || 0;
-            document.getElementById('progressBar').style.width = percent + '%';
-            document.getElementById('progressPercent').textContent = percent + '%';
+        <div class="text-center mt-3">
+            <button class="btn btn-primary btn-large" id="continue-to-process">
+                <i class="fas fa-arrow-right"></i> Continue to Process
+            </button>
+        </div>
+    </div>
+    
+    <!-- Step 3: Process Button -->
+    <div class="card hidden text-center" id="process-card">
+        <button class="btn btn-primary btn-large btn-block" id="process-btn">
+            <i class="fas fa-play-circle"></i>
+            <span id="process-btn-text">Start Processing</span>
+        </button>
+    </div>
+    
+    <!-- Progress Card -->
+    <div class="card progress-card hidden" id="progress-card">
+        <h3 style="margin: 0 0 1rem 0;"><i class="fas fa-spinner fa-spin"></i> Processing...</h3>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+        <p id="progress-status" style="margin: 0;">Initializing...</p>
+    </div>
+    
+    <!-- Step 4: Results -->
+    <div class="card hidden" id="results-card">
+        <div class="card-header">
+            <h3><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Processing Complete</h3>
+        </div>
+        
+        <div id="result-content"></div>
+        <div id="result-downloads" class="download-chips"></div>
+        
+        <!-- AI Enhancement Section (for post-processing) -->
+        <div class="ai-enhancement hidden" id="ai-enhancement-section">
+            <h4><i class="fas fa-magic"></i> Enhance Your Results with AI</h4>
+            <p style="opacity: 0.9;">Apply AI processing to analyze, summarize, or transform your transcript</p>
             
-            const message = data.status_message || 'Processing...';
-            const lines = message.split('\n');
-            document.getElementById('statusText').textContent = lines[0];
+            <div class="quick-actions">
+                <button class="quick-action-btn" data-prompt="Summarize this text in 3-5 key bullet points">
+                    <i class="fas fa-list"></i><br>Summarize
+                </button>
+                <button class="quick-action-btn" data-prompt="Provide a critical analysis of this content">
+                    <i class="fas fa-search"></i><br>Critique
+                </button>
+                <button class="quick-action-btn" data-prompt="Expand this text with more details and context">
+                    <i class="fas fa-expand-alt"></i><br>Expand
+                </button>
+                <button class="quick-action-btn" id="custom-ai-btn">
+                    <i class="fas fa-wand-magic-sparkles"></i><br>Custom
+                </button>
+            </div>
             
-            // Parse time info from message
-            if (lines.length > 1 && lines[1].includes('Duration:')) {
-                const timeInfo = lines[1];
-                const durationMatch = timeInfo.match(/Duration: ([^|]+)/);
-                const processedMatch = timeInfo.match(/Processed: ([^|]+)/);
-                const remainingMatch = timeInfo.match(/Remaining: ([^|]+)/);
-                
-                if (durationMatch) {
-                    document.getElementById('durationText').textContent = durationMatch[1].trim();
-                }
-                if (processedMatch) {
-                    document.getElementById('processedText').textContent = processedMatch[1].trim();
-                }
-                if (remainingMatch) {
-                    document.getElementById('remainingText').textContent = remainingMatch[1].trim();
-                }
-                
-                // Calculate speed
-                if (data.processing_time && processedMatch) {
-                    const procSec = parseTimeToSeconds(processedMatch[1].trim());
-                    const elapsedSec = data.processing_time / 1000;
-                    if (elapsedSec > 0 && procSec > 0) {
-                        const speed = (procSec / elapsedSec).toFixed(1);
-                        document.getElementById('speedText').textContent = speed + 'x realtime';
-                    }
-                }
-            }
-        }
+            <div id="custom-ai-panel" class="hidden mt-3" style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 8px;">
+                <div class="form-group">
+                    <label class="form-label" style="color: white;">Custom Instructions</label>
+                    <textarea id="post-ai-prompt" class="form-control" rows="3" placeholder="Describe what you want the AI to do..."></textarea>
+                </div>
+                <button class="btn btn-secondary" id="execute-post-ai">
+                    <i class="fas fa-brain"></i> Process with AI
+                </button>
+            </div>
+        </div>
         
-        function parseTimeToSeconds(timeStr) {
-            const parts = timeStr.match(/(\d+)h|(\d+)m|(\d+)s/g);
-            if (!parts) return 0;
-            
-            let seconds = 0;
-            parts.forEach(part => {
-                if (part.includes('h')) seconds += parseInt(part) * 3600;
-                if (part.includes('m')) seconds += parseInt(part) * 60;
-                if (part.includes('s')) seconds += parseInt(part);
-            });
-            return seconds;
-        }
-        
-        function showResult(text) {
-            progressSection.classList.remove('visible');
-            resultSection.classList.add('visible');
-            document.getElementById('resultText').textContent = text;
-            transcribeBtn.style.display = 'none';
-        }
-        
-        function resetUI() {
-            uploadArea.style.display = 'block';
-            fileInfo.classList.remove('visible');
-            progressSection.classList.remove('visible');
-            resultSection.classList.remove('visible');
-            transcribeBtn.disabled = false;
-            transcribeBtn.style.display = 'block';
-            document.getElementById('btnText').textContent = '🚀 Start Transcription';
-            fileInput.value = '';
-            selectedFile = null;
-            currentJobId = null;
-        }
-        
-        document.getElementById('downloadBtn').addEventListener('click', () => {
-            const text = document.getElementById('resultText').textContent;
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'transcription_' + new Date().getTime() + '.txt';
-            a.click();
-        });
-        
-        document.getElementById('newBtn').addEventListener('click', resetUI);
-    </script>
+        <div class="mt-3 text-center">
+            <button class="btn btn-secondary" id="reset-btn">
+                <i class="fas fa-redo"></i> Process Another
+            </button>
+        </div>
+    </div>
+    
+    <!-- Status Messages -->
+    <div id="status-messages"></div>
+</div>
+
+<script src="{{ url_for('static', filename='js/comprehensive-processor.js') }}"></script>
 </body>
 </html>
