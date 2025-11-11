@@ -491,8 +491,19 @@ def api_process():
                 llm_config = {}
             
             # If database unavailable, process files directly
-            if not DB_AVAILABLE and input_type == 'audio-video':
-                logger.info("Processing audio files directly without database")
+            # Check at runtime instead of relying on startup flag
+            db_available_now = False
+            if db_url:
+                try:
+                    from sqlalchemy import text
+                    with app.app_context():
+                        db.session.execute(text('SELECT 1'))
+                        db_available_now = True
+                except:
+                    pass
+            
+            if not db_available_now and input_type == 'audio-video':
+                logger.info("Processing audio files directly without database (runtime check)")
                 return process_audio_files_directly(files)
             
             # Create processing job (requires database)
@@ -552,8 +563,19 @@ def api_process():
                     return jsonify({'error': 'Invalid YouTube URL'}), 400
                 
                 # If database unavailable, process directly without job tracking
-                logger.info(f"YouTube processing - DB_AVAILABLE: {DB_AVAILABLE}")
-                if not DB_AVAILABLE:
+                # Check at runtime
+                db_available_now = False
+                if db_url:
+                    try:
+                        from sqlalchemy import text
+                        with app.app_context():
+                            db.session.execute(text('SELECT 1'))
+                            db_available_now = True
+                    except:
+                        pass
+                
+                logger.info(f"YouTube processing - db_available_now: {db_available_now}")
+                if not db_available_now:
                     logger.info(f"Processing YouTube directly without database: {source_url}")
                     try:
                         return process_youtube_directly(source_url, data)
