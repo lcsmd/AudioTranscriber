@@ -330,6 +330,19 @@ def process_audio_files_directly(files):
     
     logger.info(f"Processing {len(files)} audio files directly - Job ID: {job_id}")
     
+    # Save files first (outside thread, while files are still open)
+    saved_files = []
+    for file in files:
+        if not file.filename or not allowed_file(file.filename, 'audio'):
+            continue
+            
+        original_filename = secure_filename(file.filename)
+        file_extension = original_filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        file.save(filepath)
+        saved_files.append((filepath, original_filename, file_extension))
+    
     # Start processing in background thread
     def process_async():
         all_transcriptions = []
@@ -337,19 +350,11 @@ def process_audio_files_directly(files):
             processing_progress[job_id]['progress'] = 10
             processing_progress[job_id]['message'] = 'Preparing files...'
     
-            total_files = len([f for f in files if f.filename and allowed_file(f.filename, 'audio')])
+            total_files = len(saved_files)
             current_file = 0
             
-            for file in files:
-                if not file.filename or not allowed_file(file.filename, 'audio'):
-                    continue
-                
+            for filepath, original_filename, file_extension in saved_files:
                 current_file += 1
-                original_filename = secure_filename(file.filename)
-                file_extension = original_filename.rsplit('.', 1)[1].lower()
-                unique_filename = f"{uuid.uuid4()}.{file_extension}"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-                file.save(filepath)
                 
                 processing_progress[job_id]['progress'] = 20 + (current_file - 1) * 60 // total_files
                 processing_progress[job_id]['message'] = f'Processing file {current_file}/{total_files}: {original_filename}'
@@ -766,7 +771,13 @@ def api_job_status(job_id):
         return jsonify({'error': 'Job not found'}), 404
     
     try:
-        job = ProcessingJob.query.get_or_404(job_id)
+        # Try to convert to int for database lookup
+        try:
+            job_id_int = int(job_id)
+        except ValueError:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        job = ProcessingJob.query.get_or_404(job_id_int)
         
         status_message = {
             'pending': 'Waiting to start...',
