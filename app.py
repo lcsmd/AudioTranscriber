@@ -305,6 +305,85 @@ def api_transcription_history():
         logger.error(f"Error fetching history: {str(e)}")
         return jsonify({'jobs': [], 'error': str(e)}), 500
 
+def process_youtube_directly(source_url, data):
+    """Process YouTube URL directly without database/job tracking"""
+    from datetime import datetime
+    
+    logger.info(f"Processing YouTube URL directly: {source_url}")
+    
+    youtube_options = data.get('youtubeOptions', {})
+    pull_transcript = youtube_options.get('pullTranscript', True)
+    transcribe_audio = youtube_options.get('transcribeAudio', False)
+    
+    all_transcriptions = []
+    transcript_sources = []
+    
+    # Try to pull existing transcript first if requested
+    if pull_transcript:
+        transcript_result = get_youtube_transcript(source_url)
+        if transcript_result['success']:
+            all_transcriptions.append(transcript_result['text'])
+            transcript_sources.append(f"YouTube Transcript ({transcript_result['language']})")
+            logger.info(f"Successfully extracted YouTube transcript")
+        else:
+            logger.info(f"No transcript available: {transcript_result['error']}")
+            if not transcribe_audio:
+                transcribe_audio = True
+                logger.info("Automatically enabling audio transcription as fallback")
+    
+    # Transcribe from audio if requested or as fallback
+    if transcribe_audio or not all_transcriptions:
+        audio_files = download_youtube_audio(source_url)
+        
+        for audio_file in audio_files:
+            try:
+                transcription_result = send_to_whisper(audio_file)
+                if isinstance(transcription_result, dict) and 'text' in transcription_result:
+                    all_transcriptions.append(transcription_result['text'])
+                    transcript_sources.append("Audio Transcription")
+                else:
+                    all_transcriptions.append(str(transcription_result))
+                    transcript_sources.append("Audio Transcription")
+                os.remove(audio_file)
+            except Exception as e:
+                logger.error(f"Error transcribing {audio_file}: {str(e)}")
+                all_transcriptions.append(f"Error transcribing: {str(e)}")
+                transcript_sources.append("Audio Transcription (Error)")
+    
+    # Combine results
+    if len(all_transcriptions) > 1:
+        formatted_results = []
+        for text, source in zip(all_transcriptions, transcript_sources):
+            formatted_results.append(f"=== {source} ===\n{text}")
+        result_text = '\n\n'.join(formatted_results)
+    else:
+        result_text = all_transcriptions[0] if all_transcriptions else "No transcript available"
+    
+    # Save to file
+    try:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        # Extract video ID for filename
+        video_id = source_url.split('v=')[-1].split('&')[0] if 'v=' in source_url else 'youtube'
+        transcription_filename = f"{timestamp}_youtube_{video_id}.txt"
+        transcription_path = os.path.join(TRANSCRIPTIONS_FOLDER, transcription_filename)
+        
+        with open(transcription_path, 'w', encoding='utf-8') as f:
+            f.write(f"YouTube Transcription\n")
+            f.write(f"URL: {source_url}\n")
+            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"{'-' * 80}\n\n")
+            f.write(result_text)
+        
+        logger.info(f"YouTube transcription saved to: {transcription_path}")
+    except Exception as e:
+        logger.warning(f"Could not save transcription to file: {str(e)}")
+    
+    return jsonify({
+        'success': True,
+        'transcription': {'text': result_text},
+        'message': 'YouTube transcription completed'
+    })
+
 @app.route('/api/process', methods=['POST'])
 def api_process():
     """Comprehensive processing endpoint for all input types"""
@@ -392,6 +471,14 @@ def api_process():
                 source_url = data.get('source_url')
                 if not source_url or not is_youtube_url(source_url):
                     return jsonify({'error': 'Invalid YouTube URL'}), 400
+                
+                # If database unavailable, process directly without job tracking
+                if not DB_AVAILABLE:
+                    try:
+                        return process_youtube_directly(source_url, data)
+                    except Exception as e:
+                        logger.error(f"YouTube processing failed: {str(e)}")
+                        return jsonify({'error': f"YouTube processing failed: {str(e)}"}), 500
                 
                 # Extract YouTube processing options and LLM config
                 youtube_options = data.get('youtubeOptions', {})
