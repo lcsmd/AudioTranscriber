@@ -64,7 +64,7 @@ ALLOWED_DOCUMENT_EXTENSIONS = {'pdf', 'docx', 'txt'}
 ALL_ALLOWED_EXTENSIONS = ALLOWED_AUDIO_EXTENSIONS.union(ALLOWED_DOCUMENT_EXTENSIONS)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB limit
 
 # Configure transcriptions folder for file-based storage
 TRANSCRIPTIONS_FOLDER = os.environ.get('TRANSCRIPTIONS_FOLDER', '/var/www/speech-app/transcriptions')
