@@ -156,6 +156,12 @@ def _process_locally(audio_file_path, language='en', progress_callback=None):
     """Process audio file using local faster-whisper"""
     logger.info(f"Processing file {audio_file_path} with local faster-whisper")
     
+    # Try using GPU-enabled Python environment first
+    gpu_python = "/mnt/bigdisk/smart_transcribe_webapp/app/venv/bin/python3"
+    if os.path.exists(gpu_python):
+        logger.info(f"Using GPU-enabled Python at {gpu_python}")
+        return _process_with_gpu_python(audio_file_path, language, progress_callback, gpu_python)
+    
     try:
         from faster_whisper import WhisperModel
         
@@ -237,3 +243,78 @@ def _process_locally(audio_file_path, language='en', progress_callback=None):
     except Exception as e:
         logger.error(f"Error in local transcription: {str(e)}")
         raise Exception(f"Local transcription failed: {str(e)}")
+
+def _process_with_gpu_python(audio_file_path, language='en', progress_callback=None, python_path="/mnt/bigdisk/smart_transcribe_webapp/app/venv/bin/python3"):
+    """Process audio file using GPU-enabled Python environment"""
+    import subprocess
+    import json
+    
+    logger.info(f"Processing with GPU Python: {python_path}")
+    
+    # Create a temporary Python script to run transcription
+    script = f'''
+import sys
+import json
+from faster_whisper import WhisperModel
+
+audio_file = sys.argv[1]
+language = sys.argv[2]
+
+# Load model with GPU
+model = WhisperModel("base", device="cuda", compute_type="float16")
+
+# Transcribe
+segments, info = model.transcribe(audio_file, language=language if language != "auto" else None)
+
+# Collect results
+transcription_text = ""
+segment_list = []
+for segment in segments:
+    transcription_text += segment.text + " "
+    segment_list.append({{
+        "start": segment.start,
+        "end": segment.end,
+        "text": segment.text
+    }})
+
+result = {{
+    "text": transcription_text.strip(),
+    "segments": segment_list,
+    "language": info.language,
+    "duration": info.duration
+}}
+
+print(json.dumps(result))
+'''
+    
+    # Write script to temp file
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(script)
+        script_path = f.name
+    
+    try:
+        # Run with GPU Python
+        result = subprocess.run(
+            [python_path, script_path, audio_file_path, language],
+            capture_output=True,
+            text=True,
+            timeout=3600
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"GPU transcription failed: {result.stderr}")
+        
+        # Parse result
+        result_data = json.loads(result.stdout.strip())
+        
+        # Call progress callback with final duration if provided
+        if progress_callback and result_data.get('duration'):
+            progress_callback(result_data['duration'], result_data['duration'])
+        
+        logger.info(f"GPU transcription completed successfully")
+        return result_data
+        
+    finally:
+        # Clean up temp script
+        os.unlink(script_path)
