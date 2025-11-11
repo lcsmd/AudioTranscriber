@@ -31,13 +31,22 @@ def send_to_whisper(audio_file_path, language='en'):
     if not os.path.exists(audio_file_path):
         raise FileNotFoundError(f"Audio file not found at {audio_file_path}")
     
-    # Check if SSH is available for GPU server connection
+    # Check if we're running on the GPU server (local script available)
+    if os.path.exists(WHISPER_SCRIPT_PATH):
+        logger.info("Running on GPU server, using local faster-whisper script")
+        try:
+            return _process_with_local_script(audio_file_path, language)
+        except Exception as e:
+            logger.warning(f"Local script processing failed: {str(e)}, falling back to faster-whisper library")
+            return _process_locally(audio_file_path, language)
+    
+    # Check if SSH is available for remote GPU server connection
     ssh_available = False
     try:
         subprocess.run(["which", "ssh"], check=True, capture_output=True)
         subprocess.run(["which", "sshpass"], check=True, capture_output=True)
         ssh_available = True
-        logger.info("SSH tools available, attempting GPU server connection")
+        logger.info("SSH tools available, attempting remote GPU server connection")
     except (subprocess.CalledProcessError, FileNotFoundError):
         logger.info("SSH tools not available, using local processing")
     
@@ -49,6 +58,45 @@ def send_to_whisper(audio_file_path, language='en'):
             return _process_locally(audio_file_path, language)
     else:
         return _process_locally(audio_file_path, language)
+
+def _process_with_local_script(audio_file_path, language='en'):
+    """Process audio file using local faster-whisper script"""
+    logger.info(f"Processing file {audio_file_path} with local faster-whisper script")
+    
+    # Get the directory of the script and the venv python
+    script_dir = os.path.dirname(WHISPER_SCRIPT_PATH)
+    venv_python = os.path.join(script_dir, 'venv', 'bin', 'python3')
+    
+    # Try to use venv python if available, otherwise use system python3
+    python_cmd = venv_python if os.path.exists(venv_python) else 'python3'
+    
+    start_time = time.time()
+    
+    try:
+        # Run the script directly
+        result = subprocess.run([
+            python_cmd,
+            WHISPER_SCRIPT_PATH,
+            audio_file_path,
+            '--language', language
+        ], check=True, capture_output=True, text=True, timeout=600)
+        
+        # Parse the result
+        transcription_data = json.loads(result.stdout)
+        processing_time = time.time() - start_time
+        
+        logger.info(f"Local script transcription completed in {processing_time:.2f} seconds")
+        return transcription_data
+        
+    except subprocess.TimeoutExpired:
+        logger.error("Transcription timed out after 10 minutes")
+        raise Exception("Transcription timed out")
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse script output: {result.stdout}")
+        raise Exception(f"Invalid response from transcription script: {str(e)}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Script execution failed: {e.stderr}")
+        raise Exception(f"Transcription script failed: {e.stderr}")
 
 def _process_with_gpu_server(audio_file_path, language='en'):
     """Process audio file using remote GPU server"""
