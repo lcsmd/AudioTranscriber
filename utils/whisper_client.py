@@ -165,16 +165,25 @@ def _process_locally(audio_file_path, language='en', progress_callback=None):
             device = "cuda" if torch.cuda.is_available() else "cpu"
             compute_type = "float16" if device == "cuda" else "int8"
         except ImportError:
-            # torch not available, try cuda anyway (faster-whisper has its own CUDA check)
-            device = "cuda"
-            compute_type = "float16"
-            logger.info("torch module not found, attempting CUDA anyway")
+            # torch not available, use CPU for safety
+            device = "cpu"
+            compute_type = "int8"
+            logger.info("torch module not found, using CPU")
         
         logger.info(f"Using device: {device} with compute_type: {compute_type}")
         
         # Initialize the model (using 'base' for better performance/accuracy balance)
-        # faster-whisper will fall back to CPU if CUDA isn't actually available
-        model = WhisperModel("base", device=device, compute_type=compute_type)
+        try:
+            model = WhisperModel("base", device=device, compute_type=compute_type)
+        except Exception as e:
+            # If GPU initialization fails, fall back to CPU
+            if device == "cuda":
+                logger.warning(f"GPU initialization failed: {str(e)}, falling back to CPU")
+                device = "cpu"
+                compute_type = "int8"
+                model = WhisperModel("base", device=device, compute_type=compute_type)
+            else:
+                raise
         
         # Convert language code if needed
         whisper_language = language if language != 'auto' else None
