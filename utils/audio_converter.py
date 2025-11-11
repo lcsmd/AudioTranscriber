@@ -6,7 +6,7 @@ import shutil
 logger = logging.getLogger(__name__)
 
 # Get the full path to ffmpeg - use environment variable or find it in the system
-FFMPEG_PATH = "/nix/store/3zc5jbvqzrn8zmva4fx5p0nh4yy03wk4-ffmpeg-6.1.1-bin/bin/ffmpeg"
+FFMPEG_PATH = shutil.which('ffmpeg') or os.environ.get('FFMPEG_PATH', 'ffmpeg')
 
 def convert_mp3_to_wav(mp3_path, wav_path):
     """
