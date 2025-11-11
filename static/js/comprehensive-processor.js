@@ -541,17 +541,56 @@ function showProgress() {
 
 function updateProgress(percentage, message) {
     document.getElementById('progress-fill').style.width = `${percentage}%`;
-    document.getElementById('progress-status').textContent = message;
+    
+    // Parse message to extract main status and time info
+    const lines = message.split('\n');
+    const mainMessage = lines[0];
+    document.getElementById('progress-status').textContent = mainMessage;
+    
+    // Update time details if present
+    if (lines.length > 1 && lines[1].includes('Duration:')) {
+        const timeInfo = lines[1];
+        
+        // Extract time components
+        const durationMatch = timeInfo.match(/Duration: ([^|]+)/);
+        const processedMatch = timeInfo.match(/Processed: ([^|]+)/);
+        const remainingMatch = timeInfo.match(/Remaining: ~?([^|]+)/);
+        
+        // Update or create time display
+        let timeDisplay = document.getElementById('time-details');
+        if (!timeDisplay) {
+            timeDisplay = document.createElement('div');
+            timeDisplay.id = 'time-details';
+            timeDisplay.style.cssText = 'margin-top: 15px; padding: 15px; background: #f0f2ff; border-radius: 8px; font-family: monospace; font-size: 0.95rem;';
+            document.getElementById('progress-card').querySelector('.card-body').appendChild(timeDisplay);
+        }
+        
+        timeDisplay.innerHTML = `
+            <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px 20px;">
+                <strong style="color: #667eea;">File Duration:</strong>
+                <span>${durationMatch ? durationMatch[1].trim() : 'Detecting...'}</span>
+                
+                <strong style="color: #667eea;">Processed:</strong>
+                <span>${processedMatch ? processedMatch[1].trim() : '0:00'}</span>
+                
+                <strong style="color: #667eea;">Remaining:</strong>
+                <span>${remainingMatch ? remainingMatch[1].trim() : 'Calculating...'}</span>
+                
+                <strong style="color: #667eea;">Progress:</strong>
+                <span>${percentage}%</span>
+            </div>
+        `;
+    }
 }
 
-// Job Status Polling
+// Job Status Polling (no timeout - keeps polling)
 async function pollJobStatus(jobId) {
     const interval = setInterval(async () => {
         try {
             const response = await fetch(`/api/job-status/${jobId}`);
             const status = await response.json();
             
-            updateProgress(status.progress_percentage, status.status_message);
+            updateProgress(status.progress_percentage || 0, status.status_message || 'Processing...');
             
             if (status.status === 'completed') {
                 clearInterval(interval);
@@ -561,10 +600,10 @@ async function pollJobStatus(jobId) {
                 showError(status.error_message || 'Processing failed');
             }
         } catch (error) {
-            clearInterval(interval);
-            showError('Failed to get job status');
+            console.error('Error polling job status:', error);
+            // Don't stop polling on error - server might be busy
         }
-    }, 500);
+    }, 500); // Poll every 500ms for smoother updates
 }
 
 // Results Display
