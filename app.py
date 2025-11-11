@@ -1011,5 +1011,46 @@ def process_job_worker(job_id, file_paths=None):
 def health_check():
     return jsonify({'status': 'ok'}), 200
 
+@app.route('/api/recent-transcriptions', methods=['GET'])
+def recent_transcriptions():
+    """List recent transcription files"""
+    try:
+        import glob
+        from datetime import datetime
+        
+        files = glob.glob(os.path.join(TRANSCRIPTIONS_FOLDER, '*.txt'))
+        files.sort(key=os.path.getmtime, reverse=True)
+        
+        results = []
+        for filepath in files[:10]:  # Last 10 files
+            filename = os.path.basename(filepath)
+            mtime = os.path.getmtime(filepath)
+            size = os.path.getsize(filepath)
+            
+            results.append({
+                'filename': filename,
+                'modified': datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S'),
+                'size': size,
+                'url': f'/api/download-transcription/{filename}'
+            })
+        
+        return jsonify({'transcriptions': results})
+    except Exception as e:
+        logger.error(f"Error listing transcriptions: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/download-transcription/<filename>', methods=['GET'])
+def download_transcription(filename):
+    """Download a transcription file"""
+    try:
+        filepath = os.path.join(TRANSCRIPTIONS_FOLDER, secure_filename(filename))
+        if os.path.exists(filepath):
+            return send_file(filepath, as_attachment=True, download_name=filename)
+        else:
+            return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        logger.error(f"Error downloading transcription: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
