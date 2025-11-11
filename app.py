@@ -490,20 +490,10 @@ def api_process():
             except:
                 llm_config = {}
             
-            # If database unavailable, process files directly
-            # Check at runtime instead of relying on startup flag
-            db_available_now = False
-            if db_url:
-                try:
-                    from sqlalchemy import text
-                    with app.app_context():
-                        db.session.execute(text('SELECT 1'))
-                        db_available_now = True
-                except:
-                    pass
-            
-            if not db_available_now and input_type == 'audio-video':
-                logger.info("Processing audio files directly without database (runtime check)")
+            # Always process audio files directly without database
+            # Database job tracking is not reliable when PostgreSQL is down
+            if input_type == 'audio-video':
+                logger.info("Processing audio files directly (no database required)")
                 return process_audio_files_directly(files)
             
             # Create processing job (requires database)
@@ -566,28 +556,14 @@ def api_process():
                 if not source_url or not is_youtube_url(source_url):
                     return jsonify({'error': 'Invalid YouTube URL'}), 400
                 
-                # If database unavailable, process directly without job tracking
-                # Check at runtime
-                db_available_now = False
-                if db_url:
-                    try:
-                        from sqlalchemy import text
-                        with app.app_context():
-                            db.session.execute(text('SELECT 1'))
-                            db_available_now = True
-                    except:
-                        pass
-                
-                logger.info(f"YouTube processing - db_available_now: {db_available_now}")
-                if not db_available_now:
-                    logger.info(f"Processing YouTube directly without database: {source_url}")
-                    try:
-                        return process_youtube_directly(source_url, data)
-                    except Exception as e:
-                        logger.error(f"YouTube processing failed: {str(e)}")
-                        return jsonify({'error': f"YouTube processing failed: {str(e)}"}), 500
-                
-                logger.info(f"Creating ProcessingJob for YouTube: {source_url}")
+                # Always process YouTube directly without database
+                # Database job tracking is not reliable when PostgreSQL is down
+                logger.info(f"Processing YouTube directly (no database required): {source_url}")
+                try:
+                    return process_youtube_directly(source_url, data)
+                except Exception as e:
+                    logger.error(f"YouTube processing failed: {str(e)}")
+                    return jsonify({'error': f"YouTube processing failed: {str(e)}"}), 500
                 
                 # Extract YouTube processing options and LLM config
                 youtube_options = data.get('youtubeOptions', {})
