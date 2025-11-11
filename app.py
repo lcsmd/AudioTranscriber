@@ -66,6 +66,17 @@ ALL_ALLOWED_EXTENSIONS = ALLOWED_AUDIO_EXTENSIONS.union(ALLOWED_DOCUMENT_EXTENSI
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit
 
+# Database availability flag
+DB_AVAILABLE = False
+try:
+    if db_url:
+        with app.app_context():
+            db.session.execute(db.text('SELECT 1'))
+            DB_AVAILABLE = True
+            logger.info("Database connection verified")
+except Exception as e:
+    logger.warning(f"Database not available: {str(e)}")
+
 def allowed_file(filename, file_type='all'):
     if not filename or '.' not in filename:
         return False
@@ -131,15 +142,22 @@ def upload_file():
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
         file_size = 0
         
-        # Create a new transcription record
-        transcription = Transcription(
-            original_filename=original_filename,
-            file_type=file_extension,
-            file_size=0,  # Will update this after saving the file
-            status='processing'
-        )
-        db.session.add(transcription)
-        db.session.commit()
+        # Create a new transcription record (if database available)
+        transcription = None
+        transcription_id = None
+        if DB_AVAILABLE:
+            try:
+                transcription = Transcription(
+                    original_filename=original_filename,
+                    file_type=file_extension,
+                    file_size=0,  # Will update this after saving the file
+                    status='processing'
+                )
+                db.session.add(transcription)
+                db.session.commit()
+                transcription_id = transcription.id
+            except Exception as e:
+                logger.warning(f"Could not save to database: {str(e)}")
         
         # Save the uploaded file temporarily
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
@@ -147,8 +165,12 @@ def upload_file():
         
         # Update file size
         file_size = os.path.getsize(filepath)
-        transcription.file_size = file_size
-        db.session.commit()
+        if transcription:
+            try:
+                transcription.file_size = file_size
+                db.session.commit()
+            except Exception as e:
+                logger.warning(f"Could not update database: {str(e)}")
         
         try:
             start_time = time.time()
@@ -182,10 +204,14 @@ def upload_file():
             else:
                 transcription_text = str(transcription_result)
                 
-            transcription.transcription_text = transcription_text
-            transcription.processing_time = processing_time
-            transcription.status = 'completed'
-            db.session.commit()
+            if transcription:
+                try:
+                    transcription.transcription_text = transcription_text
+                    transcription.processing_time = processing_time
+                    transcription.status = 'completed'
+                    db.session.commit()
+                except Exception as e:
+                    logger.warning(f"Could not update database: {str(e)}")
             
             # Clean up the audio file
             os.remove(filepath)
@@ -194,16 +220,20 @@ def upload_file():
                 'success': True, 
                 'filename': original_filename,
                 'transcription': transcription_result,
-                'transcription_id': transcription.id
+                'transcription_id': transcription_id
             })
             
         except Exception as e:
             logger.error(f"Error processing file: {str(e)}")
             
             # Update the transcription record to show the error
-            transcription.status = 'failed'
-            transcription.error_message = str(e)
-            db.session.commit()
+            if transcription:
+                try:
+                    transcription.status = 'failed'
+                    transcription.error_message = str(e)
+                    db.session.commit()
+                except Exception as db_err:
+                    logger.warning(f"Could not update database: {str(db_err)}")
             
             # Try to clean up files in case of error
             try:
@@ -218,24 +248,38 @@ def upload_file():
 
 @app.route('/history', methods=['GET'])
 def transcription_history():
-    # Get all processing jobs, ordered by most recent first
-    jobs = ProcessingJob.query.order_by(ProcessingJob.created_at.desc()).all()
+    if not DB_AVAILABLE:
+        return render_template('history.html', history=[], message="Database unavailable")
     
-    # Convert to a list of dictionaries for the template
-    history = [job.to_dict() for job in jobs]
-    
-    # Render the history template
-    return render_template('history.html', history=history)
+    try:
+        # Get all processing jobs, ordered by most recent first
+        jobs = ProcessingJob.query.order_by(ProcessingJob.created_at.desc()).all()
+        
+        # Convert to a list of dictionaries for the template
+        history = [job.to_dict() for job in jobs]
+        
+        # Render the history template
+        return render_template('history.html', history=history)
+    except Exception as e:
+        logger.error(f"Error fetching history: {str(e)}")
+        return render_template('history.html', history=[], message="Error loading history")
 
 @app.route('/api/history', methods=['GET'])
 def api_transcription_history():
-    # Get all processing jobs, ordered by most recent first
-    jobs = ProcessingJob.query.order_by(ProcessingJob.created_at.desc()).all()
+    if not DB_AVAILABLE:
+        return jsonify({'jobs': [], 'message': 'Database unavailable'})
     
-    # Convert to a list of dictionaries for JSON
-    history = [job.to_dict() for job in jobs]
-    
-    return jsonify({'jobs': history})
+    try:
+        # Get all processing jobs, ordered by most recent first
+        jobs = ProcessingJob.query.order_by(ProcessingJob.created_at.desc()).all()
+        
+        # Convert to a list of dictionaries for JSON
+        history = [job.to_dict() for job in jobs]
+        
+        return jsonify({'jobs': history})
+    except Exception as e:
+        logger.error(f"Error fetching history: {str(e)}")
+        return jsonify({'jobs': [], 'error': str(e)}), 500
 
 @app.route('/api/process', methods=['POST'])
 def api_process():
