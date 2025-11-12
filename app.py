@@ -661,14 +661,57 @@ def api_process():
                 if not source_url or not is_youtube_url(source_url):
                     return jsonify({'error': 'Invalid YouTube URL'}), 400
                 
-                # Always process YouTube directly without database
-                # Database job tracking is not reliable when PostgreSQL is down
-                logger.info(f"Processing YouTube directly (no database required): {source_url}")
-                try:
-                    return process_youtube_directly(source_url, data)
-                except Exception as e:
-                    logger.error(f"YouTube processing failed: {str(e)}")
-                    return jsonify({'error': f"YouTube processing failed: {str(e)}"}), 500
+                # Process YouTube with progress tracking (no database required)
+                logger.info(f"Processing YouTube with progress tracking: {source_url}")
+                
+                job_id = str(uuid.uuid4())
+                processing_progress[job_id] = {
+                    'status': 'processing',
+                    'progress': 0,
+                    'message': 'Starting YouTube processing...',
+                    'result': None,
+                    'start_time': time.time()
+                }
+                
+                def process_youtube_async():
+                    try:
+                        processing_progress[job_id]['progress'] = 10
+                        processing_progress[job_id]['message'] = 'Checking for existing transcript...'
+                        
+                        transcript_result = get_youtube_transcript(source_url)
+                        
+                        if transcript_result['success']:
+                            processing_progress[job_id]['progress'] = 100
+                            processing_progress[job_id]['status'] = 'completed'
+                            processing_progress[job_id]['result'] = {'text': transcript_result['text']}
+                        else:
+                            processing_progress[job_id]['progress'] = 30
+                            processing_progress[job_id]['message'] = 'Downloading video...'
+                            
+                            from utils.youtube_processor import download_youtube_video
+                            video_file = download_youtube_video(source_url, app.config['UPLOAD_FOLDER'])
+                            
+                            processing_progress[job_id]['progress'] = 50
+                            processing_progress[job_id]['message'] = 'Transcribing...'
+                            
+                            result = send_to_whisper(video_file)
+                            text = result['text'] if isinstance(result, dict) else str(result)
+                            
+                            processing_progress[job_id]['progress'] = 100
+                            processing_progress[job_id]['status'] = 'completed'
+                            processing_progress[job_id]['result'] = {'text': text}
+                            
+                            if os.path.exists(video_file):
+                                os.remove(video_file)
+                    except Exception as e:
+                        logger.error(f"YouTube error: {str(e)}")
+                        processing_progress[job_id]['status'] = 'failed'
+                        processing_progress[job_id]['message'] = str(e)
+                
+                import threading
+                threading.Thread(target=process_youtube_async, daemon=True).start()
+                
+                return jsonify({'success': True, 'job_id': job_id})
                 
                 # Extract YouTube processing options and LLM config
                 youtube_options = data.get('youtubeOptions', {})
