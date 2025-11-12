@@ -523,8 +523,7 @@ def process_youtube_directly(source_url, data):
     if not all_transcriptions:
         raise Exception("No YouTube transcript available for this video and audio transcription was not enabled.")
     
-    # This code is disabled to prevent 403 errors and 30+ minute downloads
-    if False and (transcribe_audio or not all_transcriptions):
+    # Old disabled code - removed (now using inline download above)
         try:
             audio_files = download_youtube_audio(source_url)
             
