@@ -523,29 +523,7 @@ def process_youtube_directly(source_url, data):
     if not all_transcriptions:
         raise Exception("No YouTube transcript available for this video and audio transcription was not enabled.")
     
-    # Old disabled code - removed (now using inline download above)
-        try:
-            audio_files = download_youtube_audio(source_url)
-            
-            for audio_file in audio_files:
-                try:
-                    transcription_result = send_to_whisper(audio_file)
-                    if isinstance(transcription_result, dict) and 'text' in transcription_result:
-                        all_transcriptions.append(transcription_result['text'])
-                        transcript_sources.append("Audio Transcription")
-                    else:
-                        all_transcriptions.append(str(transcription_result))
-                        transcript_sources.append("Audio Transcription")
-                    os.remove(audio_file)
-                except Exception as e:
-                    logger.error(f"Error transcribing {audio_file}: {str(e)}")
-                    all_transcriptions.append(f"Error transcribing: {str(e)}")
-                    transcript_sources.append("Audio Transcription (Error)")
-        except Exception as download_error:
-            logger.error(f"Failed to download YouTube audio: {str(download_error)}")
-            if not all_transcriptions:
-                # If we couldn't get transcript OR audio, return the error
-                raise Exception(f"Failed to download YouTube audio: {str(download_error)}")
+
     
     # Combine results
     if len(all_transcriptions) > 1:
