@@ -675,38 +675,61 @@ def api_process():
                 
                 def process_youtube_async():
                     try:
+                        from datetime import datetime
+                        from utils.youtube_processor import download_youtube_video
+                        
                         processing_progress[job_id]['progress'] = 10
                         processing_progress[job_id]['message'] = 'Checking for existing transcript...'
                         
                         transcript_result = get_youtube_transcript(source_url)
                         
                         if transcript_result['success']:
-                            processing_progress[job_id]['progress'] = 100
-                            processing_progress[job_id]['status'] = 'completed'
-                            processing_progress[job_id]['result'] = {'text': transcript_result['text']}
+                            transcription_text = transcript_result['text']
+                            processing_progress[job_id]['progress'] = 90
+                            processing_progress[job_id]['message'] = 'Saving transcript...'
                         else:
                             processing_progress[job_id]['progress'] = 30
-                            processing_progress[job_id]['message'] = 'Downloading video...'
+                            processing_progress[job_id]['message'] = 'Downloading low-res video...'
                             
-                            from utils.youtube_processor import download_youtube_video
                             video_file = download_youtube_video(source_url, app.config['UPLOAD_FOLDER'])
                             
                             processing_progress[job_id]['progress'] = 50
-                            processing_progress[job_id]['message'] = 'Transcribing...'
+                            processing_progress[job_id]['message'] = 'Transcribing with Whisper...'
                             
                             result = send_to_whisper(video_file)
-                            text = result['text'] if isinstance(result, dict) else str(result)
+                            transcription_text = result['text'] if isinstance(result, dict) else str(result)
                             
-                            processing_progress[job_id]['progress'] = 100
-                            processing_progress[job_id]['status'] = 'completed'
-                            processing_progress[job_id]['result'] = {'text': text}
+                            processing_progress[job_id]['progress'] = 90
+                            processing_progress[job_id]['message'] = 'Cleaning up...'
                             
                             if os.path.exists(video_file):
                                 os.remove(video_file)
+                                logger.info(f"Removed video file: {video_file}")
+                        
+                        # Save to file
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        video_id = source_url.split('v=')[-1].split('&')[0] if 'v=' in source_url else source_url.split('/')[-1]
+                        transcription_filename = f"{timestamp}_youtube_{video_id}.txt"
+                        transcription_path = os.path.join(TRANSCRIPTIONS_FOLDER, transcription_filename)
+                        
+                        with open(transcription_path, 'w', encoding='utf-8') as f:
+                            f.write(f"YouTube Transcription\n")
+                            f.write(f"URL: {source_url}\n")
+                            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                            f.write(f"{'-' * 80}\n\n")
+                            f.write(transcription_text)
+                        
+                        logger.info(f"YouTube transcription saved to: {transcription_path}")
+                        
+                        processing_progress[job_id]['progress'] = 100
+                        processing_progress[job_id]['message'] = 'Completed!'
+                        processing_progress[job_id]['status'] = 'completed'
+                        processing_progress[job_id]['result'] = {'text': transcription_text}
+                        
                     except Exception as e:
                         logger.error(f"YouTube error: {str(e)}")
                         processing_progress[job_id]['status'] = 'failed'
-                        processing_progress[job_id]['message'] = str(e)
+                        processing_progress[job_id]['message'] = f'Error: {str(e)}'
                 
                 import threading
                 threading.Thread(target=process_youtube_async, daemon=True).start()
