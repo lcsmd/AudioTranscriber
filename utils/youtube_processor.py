@@ -108,6 +108,66 @@ def get_youtube_transcript(url, language_codes=['en', 'en-US', 'en-GB']):
         logger.error(f"Error extracting transcript: {str(e)}")
         return {'success': False, 'error': str(e)}
 
+def download_youtube_video(url, output_dir=None):
+    """
+    Download low-resolution video from YouTube for transcription
+    More reliable than audio extraction - downloads smallest video file
+    
+    Args:
+        url (str): YouTube URL
+        output_dir (str): Directory to save the video file
+    
+    Returns:
+        str: Path to downloaded video file
+    """
+    if output_dir is None:
+        output_dir = tempfile.gettempdir()
+    
+    try:
+        import uuid
+        video_id_safe = uuid.uuid4().hex[:8]
+        
+        logger.info(f"Downloading low-res YouTube video: {url}")
+        
+        # Download lowest quality video (fastest, smallest file)
+        ydl_opts = {
+            'format': 'worst[ext=mp4]/worst',  # Lowest quality MP4
+            'outtmpl': os.path.join(output_dir, f'youtube_{video_id_safe}.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
+        }
+        
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            
+            # Find the downloaded file
+            video_id = info.get('id', video_id_safe)
+            ext = info.get('ext', 'mp4')
+            
+            # Try multiple possible filenames
+            possible_paths = [
+                os.path.join(output_dir, f'youtube_{video_id_safe}.{ext}'),
+                os.path.join(output_dir, f'youtube_{video_id}.{ext}'),
+            ]
+            
+            for filepath in possible_paths:
+                if os.path.exists(filepath):
+                    logger.info(f"Downloaded video: {filepath} ({os.path.getsize(filepath) / 1024 / 1024:.1f} MB)")
+                    return filepath
+            
+            # If not found, look for any recently created file
+            for file in os.listdir(output_dir):
+                if file.startswith('youtube_') and (file.endswith('.mp4') or file.endswith('.webm')):
+                    filepath = os.path.join(output_dir, file)
+                    logger.info(f"Found video file: {filepath}")
+                    return filepath
+            
+            raise Exception("Video file not found after download")
+                
+    except Exception as e:
+        logger.error(f"Error downloading YouTube video: {str(e)}")
+        raise Exception(f"Failed to download YouTube video: {str(e)}")
+
 def download_youtube_audio(url, output_dir=None):
     """
     Download audio from YouTube video or playlist
